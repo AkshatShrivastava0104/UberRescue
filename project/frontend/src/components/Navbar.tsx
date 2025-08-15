@@ -20,14 +20,14 @@ const Navbar: React.FC = () => {
         {/* Center - Connection Status */}
         <div className="flex items-center space-x-2">
           {connected ? (
-            <div className="flex items-center space-x-1 text-success-600">
+            <div className="flex items-center space-x-1 text-green-600">
               <Wifi className="h-4 w-4" />
               <span className="text-sm font-medium">Connected</span>
             </div>
           ) : (
-            <div className="flex items-center space-x-1 text-danger-600">
+            <div className="flex items-center space-x-1 text-red-600">
               <WifiOff className="h-4 w-4" />
-              <span className="text-sm font-medium">Disconnected</span>
+              <span className="text-sm font-medium">Server Offline</span>
             </div>
           )}
         </div>
@@ -41,7 +41,7 @@ const Navbar: React.FC = () => {
             </span>
             <span className="badge badge-info">{user?.role}</span>
           </div>
-          
+
           <button
             onClick={logout}
             className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors"

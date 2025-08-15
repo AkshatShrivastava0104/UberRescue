@@ -32,8 +32,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   useEffect(() => {
     if (user && token) {
       // Connect to socket server
-      const newSocket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
-        auth: { token }
+      const newSocket = io('http://localhost:3001', {
+        extraHeaders: {
+          Authorization: `Bearer ${token}`
+        },
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+        upgrade: false,
+        timeout: 20000,
+        forceNew: true
       })
 
       setSocket(newSocket)
@@ -52,6 +62,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       newSocket.on('connect_error', (error) => {
         console.error('Socket connection error:', error)
         setConnected(false)
+        toast.error('Connection failed - Backend server may be down')
       })
 
       // Welcome message
@@ -61,8 +72,26 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
       // Ride-related events
       newSocket.on('ride-request', (data) => {
-        toast.success(`New ride request received!`)
+        toast.success(`New ride request from ${data.rider.name}!`, {
+          duration: 8000,
+          style: {
+            background: '#059669',
+            color: 'white',
+          }
+        })
         // Handle ride request notification
+      })
+
+      newSocket.on('ride-request-notification', (data) => {
+        if (user?.role === 'driver') {
+          toast(`New ${data.rideType === 'sos' ? 'EMERGENCY' : ''} ride request nearby!`, {
+            duration: 10000,
+            style: {
+              background: data.rideType === 'sos' ? '#DC2626' : '#3B82F6',
+              color: 'white',
+            }
+          })
+        }
       })
 
       newSocket.on('ride-status-update', (data) => {
@@ -100,10 +129,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         })
       })
 
-      newSocket.on('hazard-update', (data) => {
-        toast.warning(`Hazard Update: ${data.name} - ${data.description}`, {
-          duration: 6000,
-        })
+      newSocket.on('hazard-update', () => {
+        toast("Some message", {
+          icon: "⚠️",
+          style: { background: "#FACC15", color: "#000" }
+        });
+
       })
 
       return () => {

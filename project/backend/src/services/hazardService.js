@@ -27,7 +27,7 @@ const getHazardZonesNearLocation = async ({ latitude, longitude, radius }) => {
 const syncHazardData = async () => {
   try {
     let externalData = [];
-    
+
     // Try to fetch from external API if configured
     if (process.env.HAZARD_API_KEY && process.env.HAZARD_API_URL) {
       try {
@@ -119,74 +119,92 @@ const syncHazardData = async () => {
 const generateDummyHazardData = () => {
   return [
     {
-      id: 'dummy-flood-001',
-      name: 'Financial District Flooding',
+      id: 'india-flood-001',
+      name: 'Mumbai Monsoon Flooding',
       type: 'flood',
       severity: 6,
       coordinates: [
-        [37.7949, -122.4094],
-        [37.7949, -122.3994],
-        [37.7849, -122.3994],
-        [37.7849, -122.4094]
+        [19.0760, 72.8777],
+        [19.0860, 72.8877],
+        [19.0660, 72.8877],
+        [19.0660, 72.8677]
       ],
-      centerLatitude: 37.7899,
-      centerLongitude: -122.4044,
+      centerLatitude: 19.0760,
+      centerLongitude: 72.8777,
       radius: 1.5,
-      description: 'Street flooding due to storm drain backup',
+      description: 'Heavy monsoon flooding in low-lying areas',
       alertLevel: 'medium',
       isActive: true
     },
     {
-      id: 'dummy-fire-002',
-      name: 'Castro District Fire',
+      id: 'india-fire-002',
+      name: 'Delhi Air Pollution Emergency',
       type: 'fire',
       severity: 8,
       coordinates: [
-        [37.7619, -122.4394],
-        [37.7619, -122.4294],
-        [37.7519, -122.4294],
-        [37.7519, -122.4394]
+        [28.6139, 77.2090],
+        [28.6239, 77.2190],
+        [28.6039, 77.2190],
+        [28.6039, 77.2090]
       ],
-      centerLatitude: 37.7569,
-      centerLongitude: -122.4344,
+      centerLatitude: 28.6139,
+      centerLongitude: 77.2090,
       radius: 2.0,
-      description: 'Building fire with potential spread risk',
+      description: 'Severe air pollution and smog conditions',
       alertLevel: 'high',
       isActive: true
     },
     {
-      id: 'dummy-storm-003',
-      name: 'Richmond Severe Weather',
+      id: 'india-cyclone-003',
+      name: 'Chennai Cyclone Warning',
       type: 'storm',
-      severity: 4,
+      severity: 7,
       coordinates: [
-        [37.7794, -122.4894],
-        [37.7794, -122.4694],
-        [37.7694, -122.4694],
-        [37.7694, -122.4894]
+        [13.0827, 80.2707],
+        [13.0927, 80.2807],
+        [13.0727, 80.2807],
+        [13.0727, 80.2607]
       ],
-      centerLatitude: 37.7744,
-      centerLongitude: -122.4794,
+      centerLatitude: 13.0827,
+      centerLongitude: 80.2707,
       radius: 3.5,
-      description: 'Severe thunderstorm with high winds and hail',
-      alertLevel: 'medium',
+      description: 'Cyclone approaching with high winds and heavy rain',
+      alertLevel: 'high',
       isActive: Math.random() > 0.3 // Randomly active for demo
+    },
+    {
+      id: 'india-earthquake-004',
+      name: 'Himalayan Seismic Activity',
+      type: 'earthquake',
+      severity: 5,
+      coordinates: [
+        [30.0668, 79.0193],
+        [30.0768, 79.0293],
+        [30.0568, 79.0293],
+        [30.0568, 79.0093]
+      ],
+      centerLatitude: 30.0668,
+      centerLongitude: 79.0193,
+      radius: 5.0,
+      description: 'Minor seismic activity detected in Himalayan region',
+      alertLevel: 'low',
+      isActive: true
     }
   ];
 };
 
 const checkHazardIntersection = (route, hazardZones) => {
   const intersections = [];
-  
+
   for (const hazard of hazardZones) {
     if (!hazard.isActive) continue;
-    
+
     for (const waypoint of route) {
       const distance = haversineDistance(
         { lat: waypoint.lat, lng: waypoint.lng },
         { lat: hazard.centerLatitude, lng: hazard.centerLongitude }
       );
-      
+
       if (distance <= hazard.radius) {
         intersections.push({
           hazardId: hazard.id,
@@ -199,7 +217,7 @@ const checkHazardIntersection = (route, hazardZones) => {
       }
     }
   }
-  
+
   return intersections;
 };
 

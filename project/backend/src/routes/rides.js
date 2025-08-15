@@ -84,14 +84,38 @@ router.post('/', [
       // Update driver availability
       await availableDriver.update({ isAvailable: false });
 
-      // Emit socket event for real-time updates
-      req.app.get('io').to(`driver-${availableDriver.id}`).emit('ride-request', {
-        rideId: ride.id,
-        pickup: { lat: pickupLatitude, lng: pickupLongitude, address: pickupAddress },
-        destination: { lat: destinationLatitude, lng: destinationLongitude, address: destinationAddress },
-        rideType,
-        estimatedFare: routeData.estimatedFare
-      });
+      // Emit socket event for real-time updates to specific driver
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`driver-${availableDriver.userId}`).emit('ride-request', {
+          rideId: ride.id,
+          pickup: { lat: pickupLatitude, lng: pickupLongitude, address: pickupAddress },
+          destination: { lat: destinationLatitude, lng: destinationLongitude, address: destinationAddress },
+          rideType,
+          estimatedFare: routeData.estimatedFare,
+          rider: {
+            name: `${req.user.firstName} ${req.user.lastName}`,
+            phone: req.user.phone
+          }
+        });
+      }
+    } else {
+      // No driver found, broadcast to all online drivers
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('ride-request-notification', {
+          rideId: ride.id,
+          pickupLocation: { lat: pickupLatitude, lng: pickupLongitude, address: pickupAddress },
+          destinationLocation: { lat: destinationLatitude, lng: destinationLongitude, address: destinationAddress },
+          rideType,
+          estimatedFare: routeData.estimatedFare,
+          distance: routeData.distance,
+          rider: {
+            name: `${req.user.firstName} ${req.user.lastName}`,
+            phone: req.user.phone
+          }
+        });
+      }
     }
 
     const rideWithDetails = await Ride.findByPk(ride.id, {

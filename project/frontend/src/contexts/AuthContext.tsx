@@ -55,6 +55,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      axios.defaults.baseURL = 'http://localhost:3001'
+      axios.defaults.timeout = 10000
     } else {
       delete axios.defaults.headers.common['Authorization']
     }
@@ -83,13 +85,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       const response = await axios.post('/api/auth/login', { email, password })
-      
+
       const { token: newToken, user: userData } = response.data
-      
+
       setToken(newToken)
       setUser(userData)
       localStorage.setItem('token', newToken)
-      
+
       toast.success('Login successful!')
     } catch (error: any) {
       const message = error.response?.data?.message || 'Login failed'
@@ -104,13 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       const response = await axios.post('/api/auth/register', userData)
-      
+
       const { token: newToken, user: newUser } = response.data
-      
+
       setToken(newToken)
       setUser(newUser)
       localStorage.setItem('token', newToken)
-      
+
       toast.success('Registration successful!')
     } catch (error: any) {
       const message = error.response?.data?.message || 'Registration failed'

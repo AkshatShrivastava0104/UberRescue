@@ -172,11 +172,8 @@ router.get('/profile', authMiddleware, async (req, res) => {
       ]
     });
 
-    if (!driver) {
-      return res.status(404).json({ message: 'Driver profile not found' });
-    }
-
-    res.json({ driver });
+    // Return null if no driver profile exists instead of 404
+    res.json({ driver: driver || null });
   } catch (error) {
     console.error('Get driver profile error:', error);
     res.status(500).json({ message: 'Server error' });

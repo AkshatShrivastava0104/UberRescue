@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents } from 'react-leaflet'
 import { Icon } from 'leaflet'
-import { MapPin, AlertTriangle, Shield, Car } from 'lucide-react'
 
 interface Location {
   lat: number
@@ -42,36 +41,58 @@ interface MapComponentProps {
   className?: string
   height?: string
   showControls?: boolean
+  onPickupChange?: (location: Location) => void
+  onDestinationChange?: (location: Location) => void
+  allowDragging?: boolean
 }
 
 // Custom icons
-const createIcon = (color: string, icon: string) => {
-  const svg = `
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"
-      xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="16" fill="${color}"/>
-      <text x="16" y="20" text-anchor="middle" fill="white" font-size="14">${icon}</text>
-    </svg>
-  `
-
-  const utf8Svg = unescape(encodeURIComponent(svg)) // handle emojis & UTF-8
+const createIcon = (color: string, symbol: string) => {
   return new Icon({
-    iconUrl: `data:image/svg+xml;base64,${btoa(utf8Svg)}`,
+    iconUrl: `data:image/svg+xml;base64,${btoa(`
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="15" fill="${color}" stroke="white" stroke-width="2"/>
+        <text x="16" y="21" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${symbol}</text>
+      </svg>
+    `)}`,
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   })
 }
 
+const pickupIcon = createIcon('#10B981', 'P')
+const destinationIcon = createIcon('#EF4444', 'D')
+const driverIcon = createIcon('#3B82F6', 'C')
+const draggablePickupIcon = createIcon('#059669', 'P')
+const draggableDestinationIcon = createIcon('#DC2626', 'D')
+const hazardIcon = createIcon('#F59E0B', '!')
 
+// Map click handler component
+const MapClickHandler: React.FC<{
+  onPickupChange?: (location: Location) => void
+  onDestinationChange?: (location: Location) => void
+  pickup?: Location
+  destination?: Location
+}> = ({ onPickupChange, onDestinationChange, pickup, destination }) => {
+  useMapEvents({
+    click: (e) => {
+      const { lat, lng } = e.latlng
+      const address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      
+      if (!pickup && onPickupChange) {
+        onPickupChange({ lat, lng, address })
+      } else if (!destination && onDestinationChange && pickup) {
+        onDestinationChange({ lat, lng, address })
+      }
+    }
+  })
 
-const pickupIcon = createIcon('#10B981', '📍')
-const destinationIcon = createIcon('#EF4444', '🏁')
-const driverIcon = createIcon('#3B82F6', '🚗')
-const hazardIcon = createIcon('#F59E0B', '⚠️')
+  return null
+}
 
 const MapComponent: React.FC<MapComponentProps> = ({
-  center = { lat: 37.7749, lng: -122.4194 },
+  center = { lat: 20.5937, lng: 78.9629 }, // India center coordinates
   pickup,
   destination,
   hazardZones = [],
@@ -79,7 +100,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
   route = [],
   className = '',
   height = '400px',
-  showControls = true
+  showControls = true,
+  onPickupChange,
+  onDestinationChange,
+  allowDragging = false
 }) => {
   const [mapCenter, setMapCenter] = useState(center)
 
@@ -107,7 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     <div className={`relative ${className}`} style={{ height }}>
       <MapContainer
         center={[mapCenter.lat, mapCenter.lng]}
-        zoom={13}
+        zoom={5} // Lower zoom for India view
         className="w-full h-full rounded-lg border border-gray-300"
       >
         <TileLayer
@@ -115,13 +139,36 @@ const MapComponent: React.FC<MapComponentProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
+        {/* Map click handler for draggable pins */}
+        {allowDragging && (
+          <MapClickHandler
+            onPickupChange={onPickupChange}
+            onDestinationChange={onDestinationChange}
+            pickup={pickup}
+            destination={destination}
+          />
+        )}
+
         {/* Pickup marker */}
         {pickup && (
-          <Marker position={[pickup.lat, pickup.lng]} icon={pickupIcon}>
+          <Marker 
+            position={[pickup.lat, pickup.lng]} 
+            icon={allowDragging ? draggablePickupIcon : pickupIcon}
+            draggable={allowDragging}
+            eventHandlers={allowDragging ? {
+              dragend: (e) => {
+                const marker = e.target
+                const position = marker.getLatLng()
+                const address = `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`
+                onPickupChange?.({ lat: position.lat, lng: position.lng, address })
+              }
+            } : undefined}
+          >
             <Popup>
               <div className="p-2">
                 <h3 className="font-semibold text-green-800">Pickup Location</h3>
                 {pickup.address && <p className="text-sm">{pickup.address}</p>}
+                {allowDragging && <p className="text-xs text-gray-500">Drag to adjust location</p>}
               </div>
             </Popup>
           </Marker>
@@ -129,11 +176,24 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
         {/* Destination marker */}
         {destination && (
-          <Marker position={[destination.lat, destination.lng]} icon={destinationIcon}>
+          <Marker 
+            position={[destination.lat, destination.lng]} 
+            icon={allowDragging ? draggableDestinationIcon : destinationIcon}
+            draggable={allowDragging}
+            eventHandlers={allowDragging ? {
+              dragend: (e) => {
+                const marker = e.target
+                const position = marker.getLatLng()
+                const address = `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`
+                onDestinationChange?.({ lat: position.lat, lng: position.lng, address })
+              }
+            } : undefined}
+          >
             <Popup>
               <div className="p-2">
                 <h3 className="font-semibold text-red-800">Destination</h3>
                 {destination.address && <p className="text-sm">{destination.address}</p>}
+                {allowDragging && <p className="text-xs text-gray-500">Drag to adjust location</p>}
               </div>
             </Popup>
           </Marker>
@@ -233,21 +293,26 @@ const MapComponent: React.FC<MapComponentProps> = ({
         <div className="absolute top-4 right-4 bg-white rounded-lg shadow-md p-3 space-y-2 text-xs">
           <h4 className="font-semibold text-gray-800">Legend</h4>
           <div className="space-y-1">
+            {allowDragging && (
+              <div className="text-xs text-blue-600 mb-2">
+                Click map to set locations or drag pins
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-500 rounded-full" />
-              <span>Pickup</span>
+              <span>Pickup (P)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-red-500 rounded-full" />
-              <span>Destination</span>
+              <span>Destination (D)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-blue-500 rounded-full" />
-              <span>Available Drivers</span>
+              <span>Available Drivers (C)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-orange-500 rounded-full" />
-              <span>Hazard Zones</span>
+              <span>Hazard Zones (!)</span>
             </div>
           </div>
         </div>

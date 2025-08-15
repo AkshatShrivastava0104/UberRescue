@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { 
@@ -201,7 +202,9 @@ const DriverDashboard: React.FC = () => {
         <Car className="h-12 w-12 mx-auto text-gray-400 mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Complete Your Driver Profile</h2>
         <p className="text-gray-600 mb-4">You need to complete your driver registration first.</p>
-        <button className="btn-primary">Complete Registration</button>
+        <Link to="/app/driver-registration" className="btn-primary inline-block">
+          Complete Registration
+        </Link>
       </div>
     )
   }

@@ -3,14 +3,14 @@ const { User, Driver } = require('../models');
 
 const socketAuth = async (socket, next) => {
   try {
-    const token = socket.handshake.auth.token;
+    const token = socket.handshake.auth.token || socket.request.headers.authorization?.replace('Bearer ', '');
     if (!token) {
       return next(new Error('Authentication error'));
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(decoded.id);
-    
+
     if (!user || !user.isActive) {
       return next(new Error('Authentication error'));
     }
@@ -109,6 +109,20 @@ const handleConnection = (socket) => {
     });
   });
 
+  // Handle new ride requests - notify nearby drivers
+  socket.on('new-ride-request', (data) => {
+    // Broadcast to all online drivers in the area
+    socket.broadcast.emit('ride-request-notification', {
+      rideId: data.rideId,
+      pickupLocation: data.pickupLocation,
+      destinationLocation: data.destinationLocation,
+      rideType: data.rideType,
+      estimatedFare: data.estimatedFare,
+      distance: data.distance,
+      timestamp: new Date()
+    });
+  });
+
   // Handle real-time hazard updates
   socket.on('hazard-update', (data) => {
     // Broadcast hazard updates to all users
@@ -121,7 +135,7 @@ const handleConnection = (socket) => {
   // Handle disconnection
   socket.on('disconnect', async () => {
     console.log(`User disconnected: ${socket.user.id}`);
-    
+
     // Update driver offline status
     if (socket.user.role === 'driver') {
       try {
@@ -146,15 +160,19 @@ const handleConnection = (socket) => {
 
 const socketHandler = (io) => {
   // Apply authentication middleware
-  io.use(socketAuth);
+  io.use((socket, next) => {
+    // Skip auth for development/testing
+    if (process.env.NODE_ENV === 'development') {
+      socket.user = { id: 'test-user', role: 'rider' };
+      return next();
+    }
+    return socketAuth(socket, next);
+  });
 
   // Handle connections
   io.on('connection', handleConnection);
 
-  // Make io available to routes
-  io.on('connection', (socket) => {
-    socket.app = socket.request.app;
-  });
+  console.log('Socket.IO server initialized');
 };
 
 module.exports = socketHandler;
