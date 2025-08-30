@@ -2,7 +2,7 @@
 
 A comprehensive ride-hailing application optimized for emergency evacuations during natural disasters, featuring real-time hazard mapping, safe route optimization, and SOS functionality.
 
-## 🚨 Features
+## 🚨 Features 
  
 - **Emergency SOS Ride Booking** - Priority evacuation requests
 - **Real-Time Hazard Mapping** - Dynamic disaster zone visualization
