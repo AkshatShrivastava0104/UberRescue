@@ -10,7 +10,7 @@ A comprehensive ride-hailing application optimized for emergency evacuations dur
 - **Live Ride Tracking** - Real-time driver and rider coordination 
 - **Driver Safety Scoring** - Track and reward safe evacuation practices
 - **Evacuation Analytics** - Comprehensive ride history and safety metrics
-
+ 
 ## 🛠 Tech Stack
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS, Leaflet.js 
