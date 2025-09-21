@@ -13,7 +13,7 @@ A comprehensive ride-hailing application optimized for emergency evacuations dur
 
 ## 🛠 Tech Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Leaflet.js
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Leaflet.js 
 - **Backend**: Node.js, Express, Socket.IO, JWT Authentication
 - **Database**: PostgreSQL with Sequelize ORM
 - **Real-Time**: Socket.IO for live updates
