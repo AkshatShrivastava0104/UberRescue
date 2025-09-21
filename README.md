@@ -7,7 +7,7 @@ A comprehensive ride-hailing application optimized for emergency evacuations dur
 - **Emergency SOS Ride Booking** - Priority evacuation requests
 - **Real-Time Hazard Mapping** - Dynamic disaster zone visualization
 - **Safe Route Optimization** - Intelligent pathfinding avoiding danger zones 
-- **Live Ride Tracking** - Real-time driver and rider coordination
+- **Live Ride Tracking** - Real-time driver and rider coordination 
 - **Driver Safety Scoring** - Track and reward safe evacuation practices
 - **Evacuation Analytics** - Comprehensive ride history and safety metrics
 
