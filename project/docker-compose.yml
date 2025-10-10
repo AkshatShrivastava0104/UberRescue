@@ -1,29 +1,39 @@
 version: '3.8'
+
 services:
+  # ------------------------
+  # PostgreSQL Database
+  # ------------------------
   postgres:
     image: postgres:15
-    container_name: uberrescue
+    container_name: postgres_db
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydb
+      POSTGRES_DB: uberrescue
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
 
+  # ------------------------
+  # Backend Service
+  # ------------------------
   backend:
     build: ./backend
     container_name: backend_app
     restart: always
     depends_on:
       - postgres
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@mydb:5432/uberrescue
+    env_file:
+      - ./backend/.env
     ports:
-      - "5000:5000"
+      - "3001:3001"
 
+  # ------------------------
+  # Frontend Service
+  # ------------------------
   frontend:
     build: ./frontend
     container_name: frontend_app
@@ -31,5 +41,8 @@ services:
     ports:
       - "80:80"
 
+# ------------------------
+# Persistent Volume for PostgreSQL
+# ------------------------
 volumes:
   pgdata:
