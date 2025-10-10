@@ -27,7 +27,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - ./backend/.env
+      - ./backend/.env_example
     ports:
       - "3001:3001"
 
