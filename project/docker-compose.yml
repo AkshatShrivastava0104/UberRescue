@@ -20,7 +20,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/uberrescue
+      DATABASE_URL: postgresql://postgres:postgres@mydb:5432/uberrescue
     ports:
       - "5000:5000"
 
