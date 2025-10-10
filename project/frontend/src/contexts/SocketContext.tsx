@@ -31,19 +31,23 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   useEffect(() => {
     if (user && token) {
-      // Connect to socket server
-      const newSocket = io('http://localhost:3001', {
-        extraHeaders: {
-          Authorization: `Bearer ${token}`
-        },
+      console.log('Initializing Socket.IO connection...');
+      // Connect to socket server - fix for import.meta.env TypeScript error
+      const socketUrl = import.meta.env?.VITE_SOCKET_URL || 'http://localhost:3001';
+      console.log('Connecting to Socket.IO server:', socketUrl);
+
+      const newSocket = io(socketUrl, {
         auth: { token },
-        transports: ['websocket'],
+        transports: ['polling', 'websocket'], // Try polling first, then websocket
+        upgrade: true,
+        timeout: 20000,
+        forceNew: true,
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 2000,
-        upgrade: false,
-        timeout: 20000,
-        forceNew: true
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        maxReconnectionAttempts: 5,
+        autoConnect: true
       })
 
       setSocket(newSocket)
@@ -51,43 +55,73 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       // Connection event handlers
       newSocket.on('connect', () => {
         setConnected(true)
-        console.log('Connected to UberRescue server')
+        console.log('✅ Connected to UberRescue server via', newSocket.io.engine.transport.name);
+        // Remove the persistent "Connected to server" toast
+        // toast.success('Connected to server', { duration: 2000 });
       })
 
-      newSocket.on('disconnect', () => {
+      newSocket.on('disconnect', (reason) => {
         setConnected(false)
-        console.log('Disconnected from server')
+        console.log('❌ Disconnected from server:', reason);
+        toast('Disconnected from server', {
+          duration: 3000,
+          style: { background: '#f59e0b', color: 'white' }
+        });
       })
 
       newSocket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error)
+        console.error('❌ Socket connection error:', error.message);
         setConnected(false)
-        toast.error('Connection failed - Backend server may be down')
+        if (error.message.includes('ECONNREFUSED')) {
+          toast.error('Backend server is not running on port 3001');
+        } else {
+          toast.error(`Connection failed: ${error.message}`);
+        }
       })
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log(`✅ Reconnected after ${attemptNumber} attempts`);
+        toast.success('Reconnected to server', { duration: 2000 });
+      });
+
+      newSocket.on('reconnect_error', (error) => {
+        console.error('❌ Reconnection failed:', error.message);
+      });
+
+      newSocket.on('reconnect_failed', () => {
+        console.error('❌ Failed to reconnect after maximum attempts');
+        toast.error('Failed to reconnect to server');
+      });
+
+      // Transport upgrade
+      newSocket.on('upgrade', () => {
+        console.log('🔄 Upgraded to', newSocket.io.engine.transport.name);
+      });
 
       // Welcome message
       newSocket.on('connected', (data) => {
-        console.log('Welcome message:', data)
+        console.log('📨 Welcome message:', data);
       })
 
       // Ride-related events
       newSocket.on('ride-request', (data) => {
-        toast.success(`New ride request from ${data.rider.name}!`, {
+        const isEmergency = data.rideType === 'sos'
+        toast.success(`${isEmergency ? '🚨 EMERGENCY' : '🚗'} New ride request from ${data.rider.name}!`, {
           duration: 8000,
           style: {
-            background: '#059669',
+            background: isEmergency ? '#DC2626' : '#059669',
             color: 'white',
           }
         })
-        // Handle ride request notification
       })
 
       newSocket.on('ride-request-notification', (data) => {
         if (user?.role === 'driver') {
-          toast(`New ${data.rideType === 'sos' ? 'EMERGENCY' : ''} ride request nearby!`, {
+          const isEmergency = data.rideType === 'sos'
+          toast(`${isEmergency ? '🚨 EMERGENCY' : '🚗'} New ride request nearby!`, {
             duration: 10000,
             style: {
-              background: data.rideType === 'sos' ? '#DC2626' : '#3B82F6',
+              background: isEmergency ? '#DC2626' : '#3B82F6',
               color: 'white',
             }
           })
@@ -95,10 +129,26 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       })
 
       newSocket.on('ride-status-update', (data) => {
-        toast(`Ride status updated: ${data.status}`)
-        // Handle ride status update
+        toast(`Ride status: ${data.status.replace('_', ' ')}`)
       })
 
+      // Listen for analytics updates
+      newSocket.on('analytics-update', (data) => {
+        console.log('Analytics update received:', data)
+        // Trigger analytics refresh in components that need it
+        window.dispatchEvent(new CustomEvent('analytics-update', { detail: data }))
+      })
+
+      // Listen for ride accepted events
+      newSocket.on('ride-accepted', (data) => {
+        toast.success(`Driver ${data.driver.name} accepted your ride!`, {
+          duration: 6000,
+          style: {
+            background: '#059669',
+            color: 'white',
+          }
+        })
+      })
       newSocket.on('ride-request-response', (data) => {
         if (data.accepted) {
           toast.success('Driver accepted your ride!')
@@ -109,18 +159,16 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
       // Location and driver updates
       newSocket.on('driver-location-update', (data) => {
-        // Handle real-time driver location updates
         console.log('Driver location update:', data)
       })
 
       newSocket.on('driver-availability-update', (data) => {
-        // Handle driver availability changes
         console.log('Driver availability update:', data)
       })
 
       // Emergency and hazard alerts
       newSocket.on('emergency-alert', (data) => {
-        toast.error(`Emergency Alert: ${data.message}`, {
+        toast.error(`🚨 Emergency Alert: ${data.message}`, {
           duration: 8000,
           style: {
             background: '#DC2626',
@@ -129,15 +177,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         })
       })
 
-      newSocket.on('hazard-update', () => {
-        toast("Some message", {
-          icon: "⚠️",
-          style: { background: "#FACC15", color: "#000" }
-        });
-
+      newSocket.on('hazard-update', (data) => {
+        toast(`⚠️ Hazard Update: ${data.name} - ${data.description}`, {
+          duration: 6000,
+          style: {
+            background: '#F59E0B',
+            color: 'white',
+          }
+        })
       })
 
       return () => {
+        console.log('🔌 Cleaning up socket connection...');
         newSocket.close()
         setSocket(null)
         setConnected(false)
@@ -145,6 +196,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     } else {
       // Clean up socket if no user/token
       if (socket) {
+        console.log('🔌 Socket cleaned up (no user/token)');
         socket.close()
         setSocket(null)
         setConnected(false)
@@ -155,12 +207,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const emitLocationUpdate = (latitude: number, longitude: number) => {
     if (socket && connected) {
       socket.emit('update-location', { latitude, longitude })
+      console.log('📍 Location update sent:', { latitude, longitude });
+    } else {
+      console.warn('⚠️ Cannot emit location update - socket not connected');
     }
   }
 
   const emitAvailabilityUpdate = (isAvailable: boolean, isOnline: boolean) => {
     if (socket && connected) {
       socket.emit('driver-availability', { isAvailable, isOnline })
+      console.log('🚗 Availability update sent:', { isAvailable, isOnline });
+    } else {
+      console.warn('⚠️ Cannot emit availability update - socket not connected');
     }
   }
 

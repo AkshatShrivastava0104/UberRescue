@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
-import { 
-  Shield, 
-  MapPin, 
-  Clock, 
-  TrendingUp, 
+import {
+  Shield,
+  MapPin,
+  Clock,
+  // TrendingUp, 
   AlertTriangle,
   Car,
-  Users,
+  // Users,
   Star,
   Navigation,
   Power,
@@ -121,7 +121,7 @@ const DriverDashboard: React.FC = () => {
         (position) => {
           const { latitude, longitude } = position.coords
           emitLocationUpdate(latitude, longitude)
-          
+
           // Update backend
           axios.patch('/api/drivers/location', { latitude, longitude })
             .catch(error => console.error('Failed to update location:', error))
@@ -230,9 +230,8 @@ const DriverDashboard: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${
-                driverProfile.isOnline ? 'bg-blue-400' : 'bg-gray-400'
-              }`} />
+              <div className={`w-3 h-3 rounded-full ${driverProfile.isOnline ? 'bg-blue-400' : 'bg-gray-400'
+                }`} />
               <span className="text-sm">
                 {driverProfile.isOnline ? 'Online' : 'Offline'}
               </span>
@@ -253,11 +252,10 @@ const DriverDashboard: React.FC = () => {
             </div>
             <button
               onClick={toggleOnlineStatus}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                driverProfile.isOnline
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
-              }`}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${driverProfile.isOnline
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
             >
               {driverProfile.isOnline ? (
                 <>
@@ -285,11 +283,10 @@ const DriverDashboard: React.FC = () => {
             <button
               onClick={toggleAvailability}
               disabled={!driverProfile.isOnline}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                driverProfile.isAvailable
-                  ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${driverProfile.isAvailable
+                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
             >
               {driverProfile.isAvailable ? 'Set Busy' : 'Set Available'}
             </button>
@@ -330,7 +327,7 @@ const DriverDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Safety Score</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.safetyScore.toFixed(1)}/10</p>
+              <p className="text-2xl font-bold text-gray-900">{Number(stats.safetyScore || 0).toFixed(1)}/10</p>
             </div>
           </div>
         </div>
@@ -342,7 +339,7 @@ const DriverDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Rating</p>
-              <p className="text-2xl font-bold text-gray-900">{driverProfile.rating.toFixed(1)}</p>
+              <p className="text-2xl font-bold text-gray-900">{Number(driverProfile.rating || 0).toFixed(1)}</p>
             </div>
           </div>
         </div>
@@ -359,21 +356,31 @@ const DriverDashboard: React.FC = () => {
               <span>Live Tracking: {driverProfile.isOnline ? 'Active' : 'Inactive'}</span>
             </div>
           </div>
+
           <MapComponent
-            center={driverProfile.currentLatitude && driverProfile.currentLongitude ? {
-              lat: driverProfile.currentLatitude,
-              lng: driverProfile.currentLongitude
-            } : undefined}
-            drivers={driverProfile.currentLatitude && driverProfile.currentLongitude ? [{
-              id: driverProfile.id,
-              currentLatitude: driverProfile.currentLatitude,
-              currentLongitude: driverProfile.currentLongitude,
-              isAvailable: driverProfile.isAvailable,
-              user: {
-                firstName: user?.firstName || '',
-                lastName: user?.lastName || ''
-              }
-            }] : []}
+            center={
+              driverProfile.currentLatitude !== null && driverProfile.currentLongitude !== null
+                ? {
+                  lat: driverProfile.currentLatitude,
+                  lng: driverProfile.currentLongitude,
+                  address: 'Current Location' // Placeholder address
+                }
+                : { lat: 0, lng: 0, address: 'Default Location' } // Default center value with address
+            }
+            drivers={
+              driverProfile.currentLatitude !== null && driverProfile.currentLongitude !== null
+                ? [{
+                  id: driverProfile.id,
+                  currentLatitude: driverProfile.currentLatitude,
+                  currentLongitude: driverProfile.currentLongitude,
+                  isAvailable: driverProfile.isAvailable,
+                  user: {
+                    firstName: user?.firstName || '',
+                    lastName: user?.lastName || ''
+                  }
+                }]
+                : []
+            }
             hazardZones={hazardZones}
             height="400px"
             showControls={true}
@@ -438,9 +445,8 @@ const DriverDashboard: React.FC = () => {
           {recentRides.map((ride) => (
             <div key={ride.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  ride.rideType === 'sos' ? 'bg-red-100' : 'bg-blue-100'
-                }`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${ride.rideType === 'sos' ? 'bg-red-100' : 'bg-blue-100'
+                  }`}>
                   {ride.rideType === 'sos' ? (
                     <AlertTriangle className="h-5 w-5 text-red-600" />
                   ) : (
@@ -469,7 +475,12 @@ const DriverDashboard: React.FC = () => {
             <div className="text-center py-8 text-gray-500">
               <Navigation className="h-8 w-8 mx-auto mb-2" />
               <p className="text-sm">No rides completed yet</p>
-              <p className="text-xs">Go online to start receiving ride requests</p>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs">Go online to start receiving ride requests</p>
+                <Link to="/app/driver-notifications" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  View Notifications
+                </Link>
+              </div>
             </div>
           )}
         </div>

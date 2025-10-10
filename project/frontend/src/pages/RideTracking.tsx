@@ -10,8 +10,8 @@ import {
   AlertTriangle,
   Car,
   Navigation,
-  Shield,
   Star,
+  // Shield,
   CheckCircle,
   XCircle
 } from 'lucide-react'
@@ -213,7 +213,7 @@ const RideTracking: React.FC = () => {
   }
 
   const isRider = user?.id === ride.riderId
-  const isDriver = user?.role === 'driver' && ride.driver && user?.id === ride.driver.user.id
+  const isDriver = user?.role === 'driver' && ride.driver && user?.id === ride.driver.user?.id
 
   return (
     <div className="space-y-6">
@@ -294,7 +294,7 @@ const RideTracking: React.FC = () => {
                     </p>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                      <span className="text-sm text-gray-600">{ride.driver.rating.toFixed(1)}</span>
+                      <span className="text-sm text-gray-600">{Number(ride.driver.rating).toFixed(1)}</span>
                     </div>
                   </div>
                 </div>
@@ -420,23 +420,18 @@ const RideTracking: React.FC = () => {
         <div className="lg:col-span-2">
           <div className="card p-0 overflow-hidden">
             <MapComponent
-              pickup={{ lat: ride.pickupLatitude, lng: ride.pickupLongitude, address: ride.pickupAddress }}
-              destination={{ lat: ride.destinationLatitude, lng: ride.destinationLongitude, address: ride.destinationAddress }}
-              drivers={ride.driver && driverLocation ? [{
-                id: ride.driver.id,
-                currentLatitude: driverLocation.lat,
-                currentLongitude: driverLocation.lng,
-                isAvailable: false,
-                user: {
-                  firstName: ride.driver.user.firstName,
-                  lastName: ride.driver.user.lastName
-                }
-              }] : []}
-              route={[
-                { lat: ride.pickupLatitude, lng: ride.pickupLongitude },
-                { lat: ride.destinationLatitude, lng: ride.destinationLongitude }
-              ]}
-              height="600px"
+              pickup={{
+                lat: ride.pickupLatitude,
+                lng: ride.pickupLongitude,
+                address: ride.pickupAddress // Add the address property
+              }}
+              destination={{
+                lat: ride.destinationLatitude,
+                lng: ride.destinationLongitude,
+                address: ride.destinationAddress // Add the address property
+              }}
+              driverLocation={driverLocation || undefined}
+              height="400px"
               showControls={true}
             />
           </div>

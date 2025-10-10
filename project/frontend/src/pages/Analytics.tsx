@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { 
-  BarChart3, 
-  Shield, 
-  Clock, 
-  MapPin, 
+import {
+  BarChart3,
+  TrendingUp,
+  Shield,
+  Clock,
+  MapPin,
   AlertTriangle,
   Car,
   Star,
   Calendar,
   Filter
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner'
 import axios from 'axios'
-import { Link } from 'react-router-dom';
-
 
 interface AnalyticsData {
   totalRides: number
@@ -63,6 +63,7 @@ const Analytics: React.FC = () => {
   const { user } = useAuth()
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [recentRides, setRecentRides] = useState<RideRecord[]>([])
+  const [rideHistory, setRideHistory] = useState<RideRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState('30d')
 
@@ -70,14 +71,38 @@ const Analytics: React.FC = () => {
     fetchAnalytics()
   }, [timeframe])
 
+  // ✅ Normalize numeric values to avoid type errors
+  const normalizeAnalytics = (data: any): AnalyticsData => ({
+    totalRides: Number(data.totalRides) || 0,
+    totalDistance: Number(data.totalDistance) || 0,
+    totalDurationHours: Number(data.totalDurationHours) || 0,
+    averageSafetyScore: Number(data.averageSafetyScore) || 0,
+    emergencyRides: Number(data.emergencyRides) || 0,
+    hazardZonesEncountered: Number(data.hazardZonesEncountered) || 0,
+    evacuationRate: Number(data.evacuationRate) || 0,
+    totalTrips: Number(data.totalTrips) || 0,
+    emergencyTrips: Number(data.emergencyTrips) || 0,
+    totalEarnings: Number(data.totalEarnings) || 0,
+    averageRating: Number(data.averageRating) || 0,
+    rescueRate: Number(data.rescueRate) || 0,
+    safetyScore: {
+      overallScore: Number(data.safetyScore?.overallScore) || 0,
+      hazardZonesAvoided: Number(data.safetyScore?.hazardZonesAvoided) || 0,
+      completionRate: Number(data.safetyScore?.completionRate) || 0,
+      responseTimeAverage: Number(data.safetyScore?.responseTimeAverage) || 0,
+    },
+  })
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true)
       const endpoint = user?.role === 'driver' ? '/api/analytics/driver' : '/api/analytics/rider'
       const response = await axios.get(`${endpoint}?timeframe=${timeframe}`)
-      
-      setAnalytics(response.data.analytics)
+
+      const normalized = normalizeAnalytics(response.data.analytics)
+      setAnalytics(normalized)
       setRecentRides(response.data.recentRides || [])
+      setRideHistory(response.data.rideHistory || [])
     } catch (error) {
       console.error('Failed to fetch analytics:', error)
     } finally {
@@ -102,9 +127,7 @@ const Analytics: React.FC = () => {
     })
   }
 
-  if (loading) {
-    return <LoadingSpinner />
-  }
+  if (loading) return <LoadingSpinner />
 
   if (!analytics) {
     return (
@@ -128,7 +151,7 @@ const Analytics: React.FC = () => {
             Track your {user?.role === 'driver' ? 'rescue performance' : 'evacuation history'} and safety metrics
           </p>
         </div>
-        
+
         {/* Timeframe Filter */}
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 text-gray-500" />
@@ -146,6 +169,7 @@ const Analytics: React.FC = () => {
 
       {/* Key Metrics */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Trips/Rides */}
         <div className="card">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -162,6 +186,7 @@ const Analytics: React.FC = () => {
           </div>
         </div>
 
+        {/* Emergency */}
         <div className="card">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -176,6 +201,7 @@ const Analytics: React.FC = () => {
           </div>
         </div>
 
+        {/* Safety Score */}
         <div className="card">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -184,12 +210,13 @@ const Analytics: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Safety Score</p>
               <p className="text-2xl font-bold text-gray-900">
-                {(analytics.safetyScore?.overallScore || analytics.averageSafetyScore || 0).toFixed(1)}/10
+                {(Number(analytics.safetyScore?.overallScore ?? analytics.averageSafetyScore ?? 0)).toFixed(1)}/10
               </p>
             </div>
           </div>
         </div>
 
+        {/* Rating or Distance */}
         <div className="card">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -204,9 +231,9 @@ const Analytics: React.FC = () => {
                 {user?.role === 'driver' ? 'Average Rating' : 'Distance Traveled'}
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {user?.role === 'driver' 
-                  ? (analytics.averageRating || 0).toFixed(1)
-                  : `${analytics.totalDistance}km`
+                {user?.role === 'driver'
+                  ? (Number(analytics.averageRating) || 0).toFixed(1)
+                  : `${Number(analytics.totalDistance || 0).toFixed(1)} km`
                 }
               </p>
             </div>
@@ -229,21 +256,21 @@ const Analytics: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Completion Rate</span>
               <span className="font-semibold">
-                {analytics.safetyScore?.completionRate || 100}%
+                {(analytics.safetyScore?.completionRate || 100).toFixed(1)}%
               </span>
             </div>
             {user?.role === 'driver' && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Response Time</span>
                 <span className="font-semibold">
-                  {analytics.safetyScore?.responseTimeAverage || 0} min
+                  {(analytics.safetyScore?.responseTimeAverage || 0).toFixed(1)} min
                 </span>
               </div>
             )}
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Emergency Rate</span>
               <span className="font-semibold">
-                {analytics.rescueRate || analytics.evacuationRate || 0}%
+                {(analytics.rescueRate || analytics.evacuationRate || 0).toFixed(1)}%
               </span>
             </div>
           </div>
@@ -255,22 +282,22 @@ const Analytics: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Total Distance</span>
-              <span className="font-semibold">{analytics.totalDistance} km</span>
+              <span className="font-semibold">{Number(analytics.totalDistance || 0).toFixed(1)} km</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Total Time</span>
-              <span className="font-semibold">{analytics.totalDurationHours} hours</span>
+              <span className="font-semibold">{Number(analytics.totalDurationHours || 0).toFixed(1)} hours</span>
             </div>
             {user?.role === 'driver' && analytics.totalEarnings && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Earnings</span>
-                <span className="font-semibold">${analytics.totalEarnings}</span>
+                <span className="font-semibold">${Number(analytics.totalEarnings).toFixed(2)}</span>
               </div>
             )}
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Average per Trip</span>
               <span className="font-semibold">
-                {((analytics.totalDistance || 0) / (analytics.totalTrips || analytics.totalRides || 1)).toFixed(1)} km
+                {(Number(analytics.totalDistance || 0) / Number(analytics.totalTrips || analytics.totalRides || 1)).toFixed(1)} km
               </span>
             </div>
           </div>
@@ -281,15 +308,20 @@ const Analytics: React.FC = () => {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Recent {user?.role === 'driver' ? 'Trips' : 'Rides'}</h2>
-          <Calendar className="h-5 w-5 text-gray-400" />
+          <button
+            onClick={() => window.location.href = '/app/ride-history'}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            View All
+          </button>
         </div>
+
         <div className="space-y-3">
           {recentRides.map((ride) => (
             <div key={ride.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  ride.rideType === 'sos' ? 'bg-red-100' : 'bg-blue-100'
-                }`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${ride.rideType === 'sos' ? 'bg-red-100' : 'bg-blue-100'
+                  }`}>
                   {ride.rideType === 'sos' ? (
                     <AlertTriangle className="h-5 w-5 text-red-600" />
                   ) : (
@@ -307,7 +339,7 @@ const Analytics: React.FC = () => {
                       <>
                         <span>•</span>
                         <span>
-                          {user?.role === 'driver' 
+                          {user?.role === 'driver'
                             ? `${ride.rider?.firstName} ${ride.rider?.lastName}`
                             : `${ride.driver?.user.firstName} ${ride.driver?.user.lastName}`
                           }
@@ -317,7 +349,7 @@ const Analytics: React.FC = () => {
                     {ride.totalDistance && (
                       <>
                         <span>•</span>
-                        <span>{ride.totalDistance}km</span>
+                        <span>{Number(ride.totalDistance).toFixed(1)} km</span>
                       </>
                     )}
                   </div>
@@ -327,7 +359,7 @@ const Analytics: React.FC = () => {
                 {ride.safetyScore && (
                   <div className="text-right">
                     <p className="text-sm text-gray-600">Safety</p>
-                    <p className="font-semibold">{ride.safetyScore}/10</p>
+                    <p className="font-semibold">{Number(ride.safetyScore).toFixed(1)}/10</p>
                   </div>
                 )}
                 <span className={`badge ${getStatusColor(ride.status)}`}>
@@ -336,17 +368,23 @@ const Analytics: React.FC = () => {
               </div>
             </div>
           ))}
+
           {recentRides.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <BarChart3 className="h-8 w-8 mx-auto mb-2" />
               <p className="text-sm">No recent {user?.role === 'driver' ? 'trips' : 'rides'} found</p>
               {user?.role === 'rider' && (
-                <Link to="/app/book-ride" className="inline-block mt-2 btn-primary text-sm">
+                <Link to="/app/book-ride" className="inline-block mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                   Book Your First Ride
                 </Link>
               )}
               {user?.role === 'driver' && (
-                <p className="text-xs mt-2">Go online to start receiving ride requests</p>
+                <div className="mt-4">
+                  <p className="text-xs mb-2">Go online to start receiving ride requests</p>
+                  <Link to="/app/driver-dashboard" className="inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    Go to Driver Hub
+                  </Link>
+                </div>
               )}
             </div>
           )}
@@ -368,7 +406,7 @@ const Analytics: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {(analytics.emergencyTrips || analytics.emergencyRides || 0) >= 5 && (
             <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg">
               <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
@@ -380,7 +418,7 @@ const Analytics: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {(analytics.safetyScore?.overallScore || analytics.averageSafetyScore || 0) >= 8 && (
             <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
               <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">

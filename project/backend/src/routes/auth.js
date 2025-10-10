@@ -69,6 +69,10 @@ router.post('/register', [
   }
 });
 
+router.get('/login', (req, res) => {
+  res.json({ message: 'Login GET ROUTE WORKS ' });
+})
+
 // Login
 router.post('/login', [
   body('email').isEmail().normalizeEmail(),

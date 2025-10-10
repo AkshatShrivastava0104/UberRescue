@@ -41,11 +41,11 @@ router.get('/rider', authMiddleware, async (req, res) => {
     const totalRides = rideHistory.length;
     const totalDistance = rideHistory.reduce((sum, ride) => sum + parseFloat(ride.totalDistance || 0), 0);
     const totalDuration = rideHistory.reduce((sum, ride) => sum + (ride.totalDuration || 0), 0);
-    const averageSafetyScore = totalRides > 0 ? 
+    const averageSafetyScore = totalRides > 0 ?
       rideHistory.reduce((sum, ride) => sum + ride.safetyScore, 0) / totalRides : 0;
-    
+
     const emergencyRides = rideHistory.filter(ride => ride.evacuationType === 'emergency').length;
-    const hazardZonesEncountered = rideHistory.reduce((total, ride) => 
+    const hazardZonesEncountered = rideHistory.reduce((total, ride) =>
       total + (ride.hazardZonesEncountered ? ride.hazardZonesEncountered.length : 0), 0);
 
     // Get recent rides
@@ -126,13 +126,14 @@ router.get('/driver', [authMiddleware, roleMiddleware(['driver'])], async (req, 
 
     // Calculate analytics
     const totalTrips = rideHistory.length;
-    const emergencyTrips = rideHistory.filter(ride => ride.evacuationType === 'emergency').length;
+    const emergencyTrips = rideHistory.filter(ride =>
+      (ride.evacuationType && ride.evacuationType.toLowerCase() === 'emergency') || (ride.rideType && ride.rideType.toLowerCase() === 'sos')
+    ).length;
     const totalDistance = rideHistory.reduce((sum, ride) => sum + parseFloat(ride.totalDistance || 0), 0);
     const totalEarnings = rideHistory.reduce((sum, ride) => sum + parseFloat(ride.actualFare || 0), 0);
     const averageRating = totalTrips > 0 ?
       rideHistory.reduce((sum, ride) => sum + (ride.driverRating || 5), 0) / totalTrips : 5;
 
-    // Get recent rides
     const recentRides = await Ride.findAll({
       where: {
         driverId: driver.id,
@@ -201,8 +202,12 @@ router.get('/system', authMiddleware, async (req, res) => {
       where: { completedAt: { [Op.gte]: startDate } }
     });
 
+    console.log('ride History sample : ', rideHistory.slice(0, 2).map(r => r.toJSON()));
+
     const totalRides = recentRides.length;
-    const emergencyRides = recentRides.filter(ride => ride.evacuationType === 'emergency').length;
+    const emergencyTrips = rideHistory.filter(ride =>
+      (ride.evacuationType && ride.evacuationType.toLowerCase() === 'emergency') || (ride.rideType && ride.rideType.toLowerCase() === 'sos')
+    ).length;
     const totalDistance = recentRides.reduce((sum, ride) => sum + parseFloat(ride.totalDistance || 0), 0);
     const averageSafetyScore = totalRides > 0 ?
       recentRides.reduce((sum, ride) => sum + ride.safetyScore, 0) / totalRides : 0;

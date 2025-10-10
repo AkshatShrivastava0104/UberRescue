@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { 
-  MapPin, 
-  Navigation, 
-  AlertTriangle, 
-  Clock, 
+import {
+  MapPin,
+  Navigation,
+  AlertTriangle,
+  Clock,
   DollarSign,
   Shield,
   Car,
@@ -17,10 +17,10 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-interface Location {
+export interface Location {
   lat: number
   lng: number
-  address?: string
+  address: string
 }
 
 interface HazardZone {
@@ -40,16 +40,16 @@ interface RouteEstimate {
   duration: number
   estimatedFare: number
   safetyScore: number
-  hazardZonesAvoided: HazardZone[]
+  hazardZonesAvoided: any[]
 }
 
 const RideBooking: React.FC = () => {
   const [searchParams] = useSearchParams()
   const initialRideType = searchParams.get('type') as 'normal' | 'sos' || 'normal'
-  
-  const { user } = useAuth()
+
+  useAuth()
   const navigate = useNavigate()
-  
+
   const [rideType, setRideType] = useState<'normal' | 'sos'>(initialRideType)
   const [pickup, setPickup] = useState<Location | null>(null)
   const [destination, setDestination] = useState<Location | null>(null)
@@ -62,17 +62,9 @@ const RideBooking: React.FC = () => {
   const [bookingRide, setBookingRide] = useState(false)
   const [gettingLocation, setGettingLocation] = useState(false)
 
-  // Remove unused variables to fix warnings
-  // const [trendingUp, setTrendingUp] = useState(false)
-  // const [rideHistory, setRideHistory] = useState([])
-
   useEffect(() => {
     fetchHazardZones()
-    // Use user variable to avoid unused warning
-    if (user) {
-      console.log('User logged in:', user.firstName || user.email)
-    }
-  }, [user])
+  }, [])
 
   useEffect(() => {
     if (pickup && destination) {
@@ -98,14 +90,12 @@ const RideBooking: React.FC = () => {
           try {
             // Simple address format for India
             const address = `${latitude.toFixed(4)}, ${longitude.toFixed(4)} (Current Location)`
-            const locationData: Location = { lat: latitude, lng: longitude, address }
-            setPickup(locationData)
+            setPickup({ lat: latitude, lng: longitude, address })
             setPickupAddress(address)
             toast.success('Current location set as pickup')
           } catch (error) {
             console.error('Geocoding error:', error)
-            const locationData: Location = { lat: latitude, lng: longitude, address: 'Current Location' }
-            setPickup(locationData)
+            setPickup({ lat: latitude, lng: longitude, address: 'Current Location' })
             setPickupAddress('Current Location')
           }
           setGettingLocation(false)
@@ -127,28 +117,36 @@ const RideBooking: React.FC = () => {
     if (!address.trim()) return
 
     try {
-      // Simplified geocoding for India - in production, use proper geocoding service
-      // Using major Indian cities coordinates
+      // Enhanced geocoding for India with more cities and areas
       const indianCities = [
-        { name: 'Delhi', lat: 28.6139, lng: 77.2090 },
-        { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
-        { name: 'Bangalore', lat: 12.9716, lng: 77.5946 },
-        { name: 'Chennai', lat: 13.0827, lng: 80.2707 },
-        { name: 'Kolkata', lat: 22.5726, lng: 88.3639 },
-        { name: 'Hyderabad', lat: 17.3850, lng: 78.4867 }
+        { name: 'Delhi', lat: 28.6139, lng: 77.2090, aliases: ['new delhi', 'delhi ncr'] },
+        { name: 'Mumbai', lat: 19.0760, lng: 72.8777, aliases: ['bombay', 'mumbai city'] },
+        { name: 'Bangalore', lat: 12.9716, lng: 77.5946, aliases: ['bengaluru', 'blr'] },
+        { name: 'Chennai', lat: 13.0827, lng: 80.2707, aliases: ['madras'] },
+        { name: 'Kolkata', lat: 22.5726, lng: 88.3639, aliases: ['calcutta'] },
+        { name: 'Hyderabad', lat: 17.3850, lng: 78.4867, aliases: ['hyd', 'cyberabad'] },
+        { name: 'Pune', lat: 18.5204, lng: 73.8567, aliases: ['poona'] },
+        { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714, aliases: ['amdavad'] },
+        { name: 'Jaipur', lat: 26.9124, lng: 75.7873, aliases: ['pink city'] },
+        { name: 'Surat', lat: 21.1702, lng: 72.8311, aliases: [] },
+        { name: 'Lucknow', lat: 26.8467, lng: 80.9462, aliases: [] },
+        { name: 'Kanpur', lat: 26.4499, lng: 80.3319, aliases: [] }
       ]
-      
-      // Simple matching based on address input
+
+      // Enhanced matching with aliases
       let selectedCity = indianCities[Math.floor(Math.random() * indianCities.length)]
       for (const city of indianCities) {
-        if (address.toLowerCase().includes(city.name.toLowerCase())) {
+        const searchTerm = address.toLowerCase()
+        if (searchTerm.includes(city.name.toLowerCase()) ||
+          city.aliases.some(alias => searchTerm.includes(alias))) {
           selectedCity = city
           break
         }
       }
-      
-      const randomOffset = () => (Math.random() - 0.5) * 0.01
-      
+
+      // Smaller random offset for more realistic locations
+      const randomOffset = () => (Math.random() - 0.5) * 0.005
+
       const location: Location = {
         lat: selectedCity.lat + randomOffset(),
         lng: selectedCity.lng + randomOffset(),
@@ -162,7 +160,7 @@ const RideBooking: React.FC = () => {
         setDestination(location)
         setDestinationAddress(address)
       }
-      
+
       toast.success(`${type === 'pickup' ? 'Pickup' : 'Destination'} location set`)
     } catch (error) {
       toast.error('Failed to find location')
@@ -176,7 +174,7 @@ const RideBooking: React.FC = () => {
     try {
       // Simulate route calculation
       const distance = Math.sqrt(
-        Math.pow(destination.lat - pickup.lat, 2) + 
+        Math.pow(destination.lat - pickup.lat, 2) +
         Math.pow(destination.lng - pickup.lng, 2)
       ) * 111; // Rough km conversion
 
@@ -184,10 +182,10 @@ const RideBooking: React.FC = () => {
       const baseFare = rideType === 'sos' ? 10.00 : 5.00
       const estimatedFare = baseFare + (distance * (rideType === 'sos' ? 2.50 : 1.50))
 
-      // Check for hazard zones in path - fix the type issue
-      const hazardZonesAvoided: HazardZone[] = hazardZones.filter(hazard => {
+      // Check for hazard zones in path
+      const hazardZonesAvoided = hazardZones.filter(hazard => {
         const hazardDistance = Math.sqrt(
-          Math.pow(hazard.centerLatitude - pickup.lat, 2) + 
+          Math.pow(hazard.centerLatitude - pickup.lat, 2) +
           Math.pow(hazard.centerLongitude - pickup.lng, 2)
         ) * 111
         return hazardDistance <= hazard.radius + 2 // 2km buffer
@@ -221,10 +219,10 @@ const RideBooking: React.FC = () => {
       const rideData = {
         pickupLatitude: pickup.lat,
         pickupLongitude: pickup.lng,
-        pickupAddress: pickup.address || '',
+        pickupAddress: pickup.address,
         destinationLatitude: destination.lat,
         destinationLongitude: destination.lng,
-        destinationAddress: destination.address || '',
+        destinationAddress: destination.address,
         rideType,
         emergencyNotes: rideType === 'sos' ? emergencyNotes : undefined
       }
@@ -242,17 +240,6 @@ const RideBooking: React.FC = () => {
     }
   }
 
-  // Fix the callback functions to match expected types
-  const handlePickupChange = (location: Location) => {
-    setPickup(location)
-    setPickupAddress(location.address || '')
-  }
-
-  const handleDestinationChange = (location: Location) => {
-    setDestination(location)
-    setDestinationAddress(location.address || '')
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -261,27 +248,25 @@ const RideBooking: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Book a Ride</h1>
           <p className="text-gray-600">Request safe transportation with hazard avoidance</p>
         </div>
-        
+
         {/* Ride Type Toggle */}
         <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setRideType('normal')}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              rideType === 'normal'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${rideType === 'normal'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Car className="h-4 w-4 inline mr-2" />
             Normal Ride
           </button>
           <button
             onClick={() => setRideType('sos')}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              rideType === 'sos'
-                ? 'bg-red-600 text-white shadow-sm emergency-pulse'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${rideType === 'sos'
+              ? 'bg-red-600 text-white shadow-sm emergency-pulse'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <AlertTriangle className="h-4 w-4 inline mr-2" />
             SOS Emergency
@@ -297,7 +282,7 @@ const RideBooking: React.FC = () => {
             <div className="text-sm text-red-800">
               <p className="font-medium mb-1">Emergency Evacuation Mode</p>
               <p>
-                This request will be prioritized for immediate response. Emergency services 
+                This request will be prioritized for immediate response. Emergency services
                 will be notified if needed. For life-threatening situations, call 911 directly.
               </p>
             </div>
@@ -311,7 +296,7 @@ const RideBooking: React.FC = () => {
           {/* Location Inputs */}
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Trip Details</h2>
-            
+
             {/* Pickup Location */}
             <div className="space-y-2 mb-4">
               <label className="label">Pickup Location</label>
@@ -397,7 +382,7 @@ const RideBooking: React.FC = () => {
                   </div>
                   <span className="font-medium">{routeEstimate.distance} km</span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Clock className="h-4 w-4 text-gray-500" />
@@ -405,7 +390,7 @@ const RideBooking: React.FC = () => {
                   </div>
                   <span className="font-medium">{routeEstimate.duration} min</span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <DollarSign className="h-4 w-4 text-gray-500" />
@@ -413,16 +398,15 @@ const RideBooking: React.FC = () => {
                   </div>
                   <span className="font-medium">${routeEstimate.estimatedFare}</span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Shield className="h-4 w-4 text-gray-500" />
                     <span className="text-gray-600">Safety Score</span>
                   </div>
-                  <span className={`font-medium ${
-                    routeEstimate.safetyScore >= 8 ? 'text-green-600' :
+                  <span className={`font-medium ${routeEstimate.safetyScore >= 8 ? 'text-green-600' :
                     routeEstimate.safetyScore >= 6 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
+                    }`}>
                     {routeEstimate.safetyScore}/10
                   </span>
                 </div>
@@ -447,11 +431,10 @@ const RideBooking: React.FC = () => {
           <button
             onClick={bookRide}
             disabled={!pickup || !destination || bookingRide || loading}
-            className={`w-full flex items-center justify-center space-x-2 py-3 text-lg font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              rideType === 'sos'
-                ? 'bg-red-600 hover:bg-red-700 text-white emergency-pulse'
-                : 'btn-primary'
-            }`}
+            className={`w-full flex items-center justify-center space-x-2 py-3 text-lg font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${rideType === 'sos'
+              ? 'bg-red-600 hover:bg-red-700 text-white emergency-pulse'
+              : 'btn-primary'
+              }`}
           >
             {bookingRide ? (
               <>
@@ -478,8 +461,8 @@ const RideBooking: React.FC = () => {
           <div className="card p-0 overflow-hidden">
             <div className="p-4 bg-blue-50 border-b border-blue-200">
               <p className="text-sm text-blue-800">
-                <strong>Instructions:</strong> Click on the map to set pickup and destination locations, 
-                or drag the pins to adjust positions. Use "Current Location" button for pickup.
+                <strong>Instructions:</strong> Click on the map to set pickup and destination locations,
+                or drag the pins to adjust positions. Use "Current Location\" button for pickup.
               </p>
             </div>
             <MapComponent
@@ -490,8 +473,15 @@ const RideBooking: React.FC = () => {
               height="600px"
               showControls={true}
               allowDragging={true}
-              onPickupChange={handlePickupChange}
-              onDestinationChange={handleDestinationChange}
+              center={{ lat: 20.5937, lng: 78.9629, address: "India center" }}
+              onPickupChange={(location: Location) => {
+                setPickup(location)
+                setPickupAddress(location.address)
+              }}
+              onDestinationChange={(location: Location) => {
+                setDestination(location)
+                setDestinationAddress(location.address)
+              }}
             />
           </div>
         </div>

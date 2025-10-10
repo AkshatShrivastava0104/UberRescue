@@ -1,15 +1,16 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { 
-  Home, 
-  Car, 
-  MapPin, 
-  BarChart3, 
-  User, 
+import {
+  Home,
+  Car,
+  MapPin,
+  BarChart3,
+  User,
   AlertTriangle,
   Shield,
-  Route
+  Route,
+  Bell
 } from 'lucide-react'
 
 const Sidebar: React.FC = () => {
@@ -24,6 +25,7 @@ const Sidebar: React.FC = () => {
 
   const driverNavItems = [
     { to: '/app/driver-dashboard', icon: Shield, label: 'Driver Hub' },
+    { to: '/app/driver-notifications', icon: Bell, label: 'Notifications' },
     { to: '/app/analytics', icon: BarChart3, label: 'Analytics' },
     { to: '/app/profile', icon: User, label: 'Profile' },
   ]
@@ -39,10 +41,9 @@ const Sidebar: React.FC = () => {
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                `flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`
               }
             >

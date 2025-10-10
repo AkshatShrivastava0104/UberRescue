@@ -4,40 +4,58 @@ const { User, Driver } = require('../models');
 const socketAuth = async (socket, next) => {
   try {
     const token = socket.handshake.auth.token || socket.request.headers.authorization?.replace('Bearer ', '');
+
     if (!token) {
-      return next(new Error('Authentication error'));
+      console.log('⚠️ Socket connection without token - creating anonymous session');
+      socket.user = { id: 'anonymous', role: 'rider', isAnonymous: true };
+      return next();
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(decoded.id);
 
     if (!user || !user.isActive) {
-      return next(new Error('Authentication error'));
+      console.log('⚠️ Invalid user token - creating anonymous session');
+      socket.user = { id: 'anonymous', role: 'rider', isAnonymous: true };
+      return next();
     }
 
     socket.user = user;
+    console.log(`✅ Socket authenticated: ${user.email} (${user.role})`);
     next();
   } catch (error) {
-    next(new Error('Authentication error'));
+    console.log('⚠️ Socket auth error - creating anonymous session:', error.message);
+    socket.user = { id: 'anonymous', role: 'rider', isAnonymous: true };
+    next();
   }
 };
 
 const handleConnection = (socket) => {
-  console.log(`User connected: ${socket.user.id} (${socket.user.role})`);
+  const userId = socket.user.id;
+  const userRole = socket.user.role;
+
+  console.log(`🔌 User connected: ${userId} (${userRole})`);
 
   // Join room based on user role and ID
-  if (socket.user.role === 'rider') {
-    socket.join(`rider-${socket.user.id}`);
-  } else if (socket.user.role === 'driver') {
-    socket.join(`driver-${socket.user.id}`);
+  if (!socket.user.isAnonymous) {
+    if (userRole === 'rider') {
+      socket.join(`rider-${userId}`);
+      console.log(`👤 Rider ${userId} joined room`);
+    } else if (userRole === 'driver') {
+      socket.join(`driver-${userId}`);
+      console.log(`🚗 Driver ${userId} joined room`);
+    }
   }
 
   // Handle driver location updates
   socket.on('update-location', async (data) => {
-    if (socket.user.role !== 'driver') return;
+    if (socket.user.isAnonymous || userRole !== 'driver') {
+      console.log('⚠️ Location update ignored - not authenticated driver');
+      return;
+    }
 
     try {
-      const driver = await Driver.findOne({ where: { userId: socket.user.id } });
+      const driver = await Driver.findOne({ where: { userId } });
       if (driver) {
         await driver.update({
           currentLatitude: data.latitude,
@@ -51,17 +69,23 @@ const handleConnection = (socket) => {
           longitude: data.longitude,
           timestamp: new Date()
         });
+        console.log(`📍 Driver ${driver.id} location updated: ${data.latitude}, ${data.longitude}`);
       }
     } catch (error) {
-      console.error('Update location error:', error);
+      console.error('❌ Update location error:', error);
     }
   });
 
   // Handle ride status updates
   socket.on('ride-status-update', (data) => {
     // Broadcast to both rider and driver
-    socket.broadcast.to(`rider-${data.riderId}`).emit('ride-status-update', data);
-    socket.broadcast.to(`driver-${data.driverId}`).emit('ride-status-update', data);
+    if (data.riderId) {
+      socket.broadcast.to(`rider-${data.riderId}`).emit('ride-status-update', data);
+    }
+    if (data.driverId) {
+      socket.broadcast.to(`driver-${data.driverId}`).emit('ride-status-update', data);
+    }
+    console.log(`🚗 Ride status update broadcasted: ${data.status}`);
   });
 
   // Handle emergency alerts
@@ -71,14 +95,18 @@ const handleConnection = (socket) => {
       ...data,
       timestamp: new Date()
     });
+    console.log(`🚨 Emergency alert broadcasted: ${data.message}`);
   });
 
   // Handle driver availability updates
   socket.on('driver-availability', async (data) => {
-    if (socket.user.role !== 'driver') return;
+    if (socket.user.isAnonymous || userRole !== 'driver') {
+      console.log('⚠️ Availability update ignored - not authenticated driver');
+      return;
+    }
 
     try {
-      const driver = await Driver.findOne({ where: { userId: socket.user.id } });
+      const driver = await Driver.findOne({ where: { userId } });
       if (driver) {
         await driver.update({
           isAvailable: data.isAvailable,
@@ -91,22 +119,26 @@ const handleConnection = (socket) => {
           isOnline: data.isOnline,
           timestamp: new Date()
         });
+        console.log(`🚗 Driver ${driver.id} availability updated: ${data.isAvailable ? 'Available' : 'Busy'}, ${data.isOnline ? 'Online' : 'Offline'}`);
       }
     } catch (error) {
-      console.error('Update availability error:', error);
+      console.error('❌ Update availability error:', error);
     }
   });
 
   // Handle ride matching notifications
   socket.on('ride-request-response', (data) => {
     // Notify rider of driver response
-    socket.broadcast.to(`rider-${data.riderId}`).emit('ride-request-response', {
-      rideId: data.rideId,
-      accepted: data.accepted,
-      driverId: data.driverId,
-      estimatedArrival: data.estimatedArrival,
-      timestamp: new Date()
-    });
+    if (data.riderId) {
+      socket.broadcast.to(`rider-${data.riderId}`).emit('ride-request-response', {
+        rideId: data.rideId,
+        accepted: data.accepted,
+        driverId: data.driverId,
+        estimatedArrival: data.estimatedArrival,
+        timestamp: new Date()
+      });
+    }
+    console.log(`🤝 Ride request response: ${data.accepted ? 'Accepted' : 'Declined'}`);
   });
 
   // Handle new ride requests - notify nearby drivers
@@ -119,8 +151,10 @@ const handleConnection = (socket) => {
       rideType: data.rideType,
       estimatedFare: data.estimatedFare,
       distance: data.distance,
+      rider: data.rider,
       timestamp: new Date()
     });
+    console.log(`📢 New ride request broadcasted: ${data.rideType} ride`);
   });
 
   // Handle real-time hazard updates
@@ -130,21 +164,23 @@ const handleConnection = (socket) => {
       ...data,
       timestamp: new Date()
     });
+    console.log(`⚠️ Hazard update broadcasted: ${data.name}`);
   });
 
   // Handle disconnection
-  socket.on('disconnect', async () => {
-    console.log(`User disconnected: ${socket.user.id}`);
+  socket.on('disconnect', async (reason) => {
+    console.log(`🔌 User disconnected: ${userId} - Reason: ${reason}`);
 
     // Update driver offline status
-    if (socket.user.role === 'driver') {
+    if (!socket.user.isAnonymous && userRole === 'driver') {
       try {
-        const driver = await Driver.findOne({ where: { userId: socket.user.id } });
+        const driver = await Driver.findOne({ where: { userId } });
         if (driver) {
           await driver.update({ isOnline: false });
+          console.log(`🚗 Driver ${driver.id} set to offline`);
         }
       } catch (error) {
-        console.error('Update driver offline status error:', error);
+        console.error('❌ Update driver offline status error:', error);
       }
     }
   });
@@ -160,19 +196,13 @@ const handleConnection = (socket) => {
 
 const socketHandler = (io) => {
   // Apply authentication middleware
-  io.use((socket, next) => {
-    // Skip auth for development/testing
-    if (process.env.NODE_ENV === 'development') {
-      socket.user = { id: 'test-user', role: 'rider' };
-      return next();
-    }
-    return socketAuth(socket, next);
-  });
+  io.use(socketAuth);
 
   // Handle connections
   io.on('connection', handleConnection);
 
-  console.log('Socket.IO server initialized');
+  console.log('🔌 Socket.IO server initialized and ready');
+  console.log('📡 Listening for connections on all transports');
 };
 
 module.exports = socketHandler;

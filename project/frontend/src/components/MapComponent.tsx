@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents } from 'react-leaflet'
 import { Icon } from 'leaflet'
 
-interface Location {
+export interface Location {
   lat: number
   lng: number
-  address?: string
+  address: string
+  center?: boolean
 }
 
 interface HazardZone {
@@ -35,6 +36,7 @@ interface MapComponentProps {
   center?: Location
   pickup?: Location
   destination?: Location
+  driverLocation?: Location
   hazardZones?: HazardZone[]
   drivers?: Driver[]
   route?: Location[]
@@ -79,7 +81,7 @@ const MapClickHandler: React.FC<{
     click: (e) => {
       const { lat, lng } = e.latlng
       const address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-      
+
       if (!pickup && onPickupChange) {
         onPickupChange({ lat, lng, address })
       } else if (!destination && onDestinationChange && pickup) {
@@ -95,6 +97,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   center = { lat: 20.5937, lng: 78.9629 }, // India center coordinates
   pickup,
   destination,
+  driverLocation,
   hazardZones = [],
   drivers = [],
   route = [],
@@ -151,8 +154,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
         {/* Pickup marker */}
         {pickup && (
-          <Marker 
-            position={[pickup.lat, pickup.lng]} 
+          <Marker
+            position={[pickup.lat, pickup.lng]}
             icon={allowDragging ? draggablePickupIcon : pickupIcon}
             draggable={allowDragging}
             eventHandlers={allowDragging ? {
@@ -176,8 +179,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
         {/* Destination marker */}
         {destination && (
-          <Marker 
-            position={[destination.lat, destination.lng]} 
+          <Marker
+            position={[destination.lat, destination.lng]}
             icon={allowDragging ? draggableDestinationIcon : destinationIcon}
             draggable={allowDragging}
             eventHandlers={allowDragging ? {
@@ -212,9 +215,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                   {driver.user.firstName} {driver.user.lastName}
                 </h3>
                 <div className="flex items-center space-x-1 mt-1">
-                  <div className={`w-2 h-2 rounded-full ${
-                    driver.isAvailable ? 'bg-green-500' : 'bg-red-500'
-                  }`} />
+                  <div className={`w-2 h-2 rounded-full ${driver.isAvailable ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
                   <span className="text-xs">
                     {driver.isAvailable ? 'Available' : 'Busy'}
                   </span>
@@ -255,12 +257,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-medium">Alert:</span>
-                      <span className={`text-xs capitalize px-1 py-0.5 rounded ${
-                        hazard.alertLevel === 'critical' ? 'bg-red-100 text-red-800' :
+                      <span className={`text-xs capitalize px-1 py-0.5 rounded ${hazard.alertLevel === 'critical' ? 'bg-red-100 text-red-800' :
                         hazard.alertLevel === 'high' ? 'bg-orange-100 text-orange-800' :
-                        hazard.alertLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
+                          hazard.alertLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                        }`}>
                         {hazard.alertLevel}
                       </span>
                     </div>

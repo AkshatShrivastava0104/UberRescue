@@ -5,47 +5,34 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-
-  // Define environment variables for import.meta.env
-  define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:3001'),
-    'import.meta.env.VITE_SOCKET_URL': JSON.stringify(process.env.VITE_SOCKET_URL || 'http://localhost:3001'),
-  },
-
-  // Path resolution
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
-
-  // Development server configuration
+  define: {
+    'import.meta.env': 'import.meta.env'
+  },
   server: {
     host: true,
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        target: 'https://localhost:3001',
         changeOrigin: true,
-        secure: false,
+        secure: false,  // If you're using self-signed certificates in development
+      },
+      '/socket.io': {
+        target: 'https://localhost:3001',
+        ws: true,             // Enable WebSocket proxying
+        changeOrigin: true,
+        secure: false,       // If you're using self-signed certificates in development
       },
     },
   },
 
-  // Build configuration
   build: {
     outDir: 'dist',
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          axios: ['axios'],
-        },
-      },
-    },
   },
-
-  // Environment variables configuration
-  envPrefix: 'VITE_',
 })

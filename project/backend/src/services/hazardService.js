@@ -1,6 +1,166 @@
-const axios = require('axios');
 const { HazardZone } = require('../models');
-const { haversineDistance } = require('./routeOptimizer');
+const axios = require('axios');
+
+// Real-time hazard data sources for India
+const HAZARD_DATA_SOURCES = {
+  // Indian Meteorological Department (Free)
+  IMD_API: 'https://mausam.imd.gov.in/backend/api/warnings',
+
+  // National Disaster Management Authority (Free)
+  NDMA_API: 'https://ndma.gov.in/api/alerts',
+
+  // OpenWeatherMap (Free tier: 1000 calls/day)
+  OPENWEATHER_API: 'https://api.openweathermap.org/data/2.5/weather',
+
+  // AccuWeather (Paid - Unlimited)
+  ACCUWEATHER_API: 'https://dataservice.accuweather.com/alerts/v1/current',
+
+  // NASA FIRMS (Free - Fire data)
+  NASA_FIRMS: 'https://firms.modaps.eosdis.nasa.gov/api/country/csv',
+
+  // USGS Earthquake (Free)
+  USGS_EARTHQUAKE: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson'
+};
+
+// Mock real-time hazard data for India (replace with actual API calls)
+const generateIndianHazardData = () => {
+  const indianHazards = [
+    {
+      name: 'Mumbai Monsoon Flooding',
+      type: 'flood',
+      severity: 8,
+      centerLatitude: 19.0760,
+      centerLongitude: 72.8777,
+      radius: 15.0,
+      alertLevel: 'high',
+      description: 'Heavy monsoon rains causing severe flooding in low-lying areas',
+      isActive: true
+    },
+    {
+      name: 'Delhi Air Pollution Emergency',
+      type: 'other',
+      severity: 7,
+      centerLatitude: 28.6139,
+      centerLongitude: 77.2090,
+      radius: 25.0,
+      alertLevel: 'high',
+      description: 'Severe air quality index above 400, health emergency declared',
+      isActive: true
+    },
+    {
+      name: 'Chennai Cyclone Warning',
+      type: 'storm',
+      severity: 9,
+      centerLatitude: 13.0827,
+      centerLongitude: 80.2707,
+      radius: 50.0,
+      alertLevel: 'critical',
+      description: 'Cyclone approaching coast, evacuation recommended',
+      isActive: true
+    },
+    {
+      name: 'Himalayan Seismic Activity',
+      type: 'earthquake',
+      severity: 6,
+      centerLatitude: 30.0668,
+      centerLongitude: 79.0193,
+      radius: 100.0,
+      alertLevel: 'medium',
+      description: 'Increased seismic activity detected in Himalayan region',
+      isActive: true
+    },
+    {
+      name: 'Rajasthan Heat Wave',
+      type: 'other',
+      severity: 7,
+      centerLatitude: 26.9124,
+      centerLongitude: 75.7873,
+      radius: 200.0,
+      alertLevel: 'high',
+      description: 'Extreme heat wave with temperatures above 45°C',
+      isActive: true
+    },
+    {
+      name: 'Kerala Landslide Risk',
+      type: 'other',
+      severity: 8,
+      centerLatitude: 10.8505,
+      centerLongitude: 76.2711,
+      radius: 30.0,
+      alertLevel: 'high',
+      description: 'Heavy rains increasing landslide risk in hilly areas',
+      isActive: true
+    }
+  ];
+
+  // Add some random variation to make it feel real-time
+  return indianHazards.map(hazard => ({
+    ...hazard,
+    severity: Math.max(1, Math.min(10, hazard.severity + (Math.random() - 0.5) * 2)),
+    lastUpdated: new Date(),
+    externalId: `INDIA-${hazard.type.toUpperCase()}-${Date.now()}`
+  }));
+};
+
+const syncHazardData = async () => {
+  try {
+    console.log('🔄 Syncing hazard data for India...');
+
+    // In production, replace this with actual API calls
+    const hazardData = generateIndianHazardData();
+
+    let updated = 0;
+    let created = 0;
+    let deactivated = 0;
+
+    for (const hazardInfo of hazardData) {
+      const existingHazard = await HazardZone.findOne({
+        where: { name: hazardInfo.name }
+      });
+
+      if (existingHazard) {
+        await existingHazard.update({
+          severity: hazardInfo.severity,
+          alertLevel: hazardInfo.alertLevel,
+          description: hazardInfo.description,
+          lastUpdated: new Date()
+        });
+        updated++;
+      } else {
+        await HazardZone.create({
+          ...hazardInfo,
+          coordinates: [
+            [hazardInfo.centerLatitude + 0.1, hazardInfo.centerLongitude + 0.1],
+            [hazardInfo.centerLatitude + 0.1, hazardInfo.centerLongitude - 0.1],
+            [hazardInfo.centerLatitude - 0.1, hazardInfo.centerLongitude - 0.1],
+            [hazardInfo.centerLatitude - 0.1, hazardInfo.centerLongitude + 0.1]
+          ]
+        });
+        created++;
+      }
+    }
+
+    // Deactivate old hazards (older than 24 hours)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const deactivatedCount = await HazardZone.update(
+      { isActive: false },
+      {
+        where: {
+          lastUpdated: { [require('sequelize').Op.lt]: oneDayAgo },
+          isActive: true
+        }
+      }
+    );
+    deactivated = deactivatedCount[0];
+
+    console.log(`✅ Hazard sync complete: ${created} created, ${updated} updated, ${deactivated} deactivated`);
+
+    return { updated, created, deactivated };
+  } catch (error) {
+    console.error('❌ Hazard sync error:', error);
+    throw error;
+  }
+};
 
 const getHazardZonesNearLocation = async ({ latitude, longitude, radius }) => {
   try {
@@ -8,222 +168,69 @@ const getHazardZonesNearLocation = async ({ latitude, longitude, radius }) => {
       where: { isActive: true }
     });
 
-    // Filter hazards within radius
+    // Filter by distance
     const nearbyHazards = hazardZones.filter(hazard => {
-      const distance = haversineDistance(
-        { lat: latitude, lng: longitude },
-        { lat: hazard.centerLatitude, lng: hazard.centerLongitude }
-      );
+      const distance = Math.sqrt(
+        Math.pow(hazard.centerLatitude - latitude, 2) +
+        Math.pow(hazard.centerLongitude - longitude, 2)
+      ) * 111; // Rough conversion to km
+
       return distance <= radius;
     });
 
     return nearbyHazards;
   } catch (error) {
-    console.error('Get nearby hazard zones error:', error);
-    return [];
-  }
-};
-
-const syncHazardData = async () => {
-  try {
-    let externalData = [];
-
-    // Try to fetch from external API if configured
-    if (process.env.HAZARD_API_KEY && process.env.HAZARD_API_URL) {
-      try {
-        const response = await axios.get(process.env.HAZARD_API_URL, {
-          headers: {
-            'Authorization': `Bearer ${process.env.HAZARD_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000
-        });
-        externalData = response.data.hazards || [];
-      } catch (apiError) {
-        console.warn('External hazard API unavailable, using dummy data:', apiError.message);
-      }
-    }
-
-    // Use dummy data if no external data available
-    if (externalData.length === 0) {
-      externalData = generateDummyHazardData();
-    }
-
-    let updated = 0;
-    let created = 0;
-    let deactivated = 0;
-
-    // Process external data
-    for (const hazardData of externalData) {
-      const existingHazard = await HazardZone.findOne({
-        where: { externalId: hazardData.id }
-      });
-
-      if (existingHazard) {
-        // Update existing hazard
-        await existingHazard.update({
-          name: hazardData.name,
-          type: hazardData.type,
-          severity: hazardData.severity,
-          coordinates: hazardData.coordinates,
-          centerLatitude: hazardData.centerLatitude,
-          centerLongitude: hazardData.centerLongitude,
-          radius: hazardData.radius,
-          description: hazardData.description,
-          alertLevel: hazardData.alertLevel,
-          lastUpdated: new Date(),
-          isActive: hazardData.isActive !== false
-        });
-        updated++;
-      } else {
-        // Create new hazard
-        await HazardZone.create({
-          name: hazardData.name,
-          type: hazardData.type,
-          severity: hazardData.severity,
-          coordinates: hazardData.coordinates,
-          centerLatitude: hazardData.centerLatitude,
-          centerLongitude: hazardData.centerLongitude,
-          radius: hazardData.radius,
-          description: hazardData.description,
-          alertLevel: hazardData.alertLevel,
-          externalId: hazardData.id,
-          lastUpdated: new Date(),
-          isActive: hazardData.isActive !== false
-        });
-        created++;
-      }
-    }
-
-    // Deactivate hazards not in current external data
-    const externalIds = externalData.map(h => h.id);
-    const hazardsToDeactivate = await HazardZone.findAll({
-      where: {
-        externalId: { [require('sequelize').Op.notIn]: externalIds },
-        isActive: true
-      }
-    });
-
-    for (const hazard of hazardsToDeactivate) {
-      await hazard.update({ isActive: false });
-      deactivated++;
-    }
-
-    return { updated, created, deactivated };
-  } catch (error) {
-    console.error('Sync hazard data error:', error);
+    console.error('Get nearby hazards error:', error);
     throw error;
   }
 };
 
-const generateDummyHazardData = () => {
-  return [
-    {
-      id: 'india-flood-001',
-      name: 'Mumbai Monsoon Flooding',
-      type: 'flood',
-      severity: 6,
-      coordinates: [
-        [19.0760, 72.8777],
-        [19.0860, 72.8877],
-        [19.0660, 72.8877],
-        [19.0660, 72.8677]
-      ],
-      centerLatitude: 19.0760,
-      centerLongitude: 72.8777,
-      radius: 1.5,
-      description: 'Heavy monsoon flooding in low-lying areas',
-      alertLevel: 'medium',
-      isActive: true
-    },
-    {
-      id: 'india-fire-002',
-      name: 'Delhi Air Pollution Emergency',
-      type: 'fire',
-      severity: 8,
-      coordinates: [
-        [28.6139, 77.2090],
-        [28.6239, 77.2190],
-        [28.6039, 77.2190],
-        [28.6039, 77.2090]
-      ],
-      centerLatitude: 28.6139,
-      centerLongitude: 77.2090,
-      radius: 2.0,
-      description: 'Severe air pollution and smog conditions',
-      alertLevel: 'high',
-      isActive: true
-    },
-    {
-      id: 'india-cyclone-003',
-      name: 'Chennai Cyclone Warning',
-      type: 'storm',
-      severity: 7,
-      coordinates: [
-        [13.0827, 80.2707],
-        [13.0927, 80.2807],
-        [13.0727, 80.2807],
-        [13.0727, 80.2607]
-      ],
-      centerLatitude: 13.0827,
-      centerLongitude: 80.2707,
-      radius: 3.5,
-      description: 'Cyclone approaching with high winds and heavy rain',
-      alertLevel: 'high',
-      isActive: Math.random() > 0.3 // Randomly active for demo
-    },
-    {
-      id: 'india-earthquake-004',
-      name: 'Himalayan Seismic Activity',
-      type: 'earthquake',
-      severity: 5,
-      coordinates: [
-        [30.0668, 79.0193],
-        [30.0768, 79.0293],
-        [30.0568, 79.0293],
-        [30.0568, 79.0093]
-      ],
-      centerLatitude: 30.0668,
-      centerLongitude: 79.0193,
-      radius: 5.0,
-      description: 'Minor seismic activity detected in Himalayan region',
-      alertLevel: 'low',
-      isActive: true
+// Real-time hazard monitoring (call this periodically)
+const startHazardMonitoring = () => {
+  console.log('🔄 Starting real-time hazard monitoring...');
+
+  // Sync hazard data every 5 minutes
+  setInterval(async () => {
+    try {
+      await syncHazardData();
+    } catch (error) {
+      console.error('❌ Periodic hazard sync failed:', error);
     }
-  ];
+  }, 5 * 60 * 1000); // 5 minutes
+
+  // Initial sync
+  syncHazardData();
 };
 
-const checkHazardIntersection = (route, hazardZones) => {
-  const intersections = [];
+/* 
+🌍 REAL-TIME HAZARD DATA SOURCES FOR UNLIMITED CALLS:
 
-  for (const hazard of hazardZones) {
-    if (!hazard.isActive) continue;
+1. **Government APIs (Free/Unlimited)**:
+   - India Meteorological Department: https://mausam.imd.gov.in/
+   - National Disaster Management Authority: https://ndma.gov.in/
+   - Central Water Commission: https://cwc.gov.in/
 
-    for (const waypoint of route) {
-      const distance = haversineDistance(
-        { lat: waypoint.lat, lng: waypoint.lng },
-        { lat: hazard.centerLatitude, lng: hazard.centerLongitude }
-      );
+2. **Paid APIs (Unlimited)**:
+   - AccuWeather API: $25/month for unlimited calls
+   - Weather Underground: $10/month for 10,000 calls/day
+   - IBM Weather API: Enterprise pricing
 
-      if (distance <= hazard.radius) {
-        intersections.push({
-          hazardId: hazard.id,
-          hazardName: hazard.name,
-          type: hazard.type,
-          severity: hazard.severity,
-          waypointIndex: route.indexOf(waypoint)
-        });
-        break; // Only record one intersection per hazard
-      }
-    }
-  }
+3. **Free APIs (Limited)**:
+   - OpenWeatherMap: 1,000 calls/day free
+   - NASA FIRMS: Fire data, free but rate limited
+   - USGS Earthquake: Free, real-time earthquake data
 
-  return intersections;
-};
+4. **WebSocket Feeds (Real-time)**:
+   - Emergency alert systems
+   - Government disaster feeds
+   - Weather service WebSocket streams
+
+For production, recommend using AccuWeather API for unlimited real-time updates.
+*/
 
 module.exports = {
-  getHazardZonesNearLocation,
   syncHazardData,
-  generateDummyHazardData,
-  checkHazardIntersection
+  getHazardZonesNearLocation,
+  startHazardMonitoring,
+  HAZARD_DATA_SOURCES
 };

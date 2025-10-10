@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { 
-  User, 
-  Phone, 
-  Mail, 
-  Shield, 
-  Edit3, 
-  Save, 
+import {
+  User,
+  Phone,
+  Mail,
+  Shield,
+  Edit3,
+  Save,
   X,
   Camera,
   AlertTriangle,
@@ -108,11 +108,11 @@ const Profile: React.FC = () => {
     try {
       setSaving(true)
       await axios.put('/api/auth/profile', formData)
-      
+
       // Update local state
       setProfile(prev => prev ? { ...prev, ...formData } : prev)
       updateUser({ ...formData })
-      
+
       setEditing(false)
       toast.success('Profile updated successfully')
     } catch (error: any) {
@@ -157,7 +157,7 @@ const Profile: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
           <p className="text-gray-600">Manage your account information and preferences</p>
         </div>
-        
+
         {!editing && (
           <button
             onClick={() => setEditing(true)}
@@ -187,9 +187,8 @@ const Profile: React.FC = () => {
               {profile.firstName} {profile.lastName}
             </h2>
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className={`w-3 h-3 rounded-full ${
-                profile.role === 'driver' ? 'bg-green-500' : 'bg-blue-500'
-              }`} />
+              <div className={`w-3 h-3 rounded-full ${profile.role === 'driver' ? 'bg-green-500' : 'bg-blue-500'
+                }`} />
               <span className="text-sm text-gray-600 capitalize">{profile.role}</span>
             </div>
 
@@ -200,7 +199,7 @@ const Profile: React.FC = () => {
                   <span className="text-gray-600">Rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="font-medium">{profile.driverProfile.rating.toFixed(1)}</span>
+                    <span className="font-medium">{Number(profile.driverProfile.rating).toFixed(1)}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -209,11 +208,10 @@ const Profile: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Status</span>
-                  <span className={`badge ${
-                    profile.driverProfile.isOnline 
-                      ? 'badge-success' 
+                  <span className={`badge ${profile.driverProfile.isOnline
+                      ? 'badge-success'
                       : 'bg-gray-100 text-gray-800'
-                  }`}>
+                    }`}>
                     {profile.driverProfile.isOnline ? 'Online' : 'Offline'}
                   </span>
                 </div>
@@ -342,7 +340,7 @@ const Profile: React.FC = () => {
           {profile.role === 'driver' && profile.driverProfile && (
             <div className="card">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Driver Information</h3>
-              
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">License Number</label>

@@ -5,10 +5,45 @@ const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
+router.post('/driver/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // make sure user exists AND is a driver
+    const user = await User.findOne({ where: { email, role: 'driver' } });
+    if (!user) return res.status(400).json({ message: 'Driver not found' });
+
+    // check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+    // sign token with role: driver
+    const token = jwt.sign(
+      { id: user.id, role: 'driver' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.json({
+      message: 'Driver logged in successfully',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    });
+  } catch (err) {
+    console.error('Driver login error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Complete driver registration
 router.post('/complete-profile', [
   authMiddleware,
-  roleMiddleware(['driver']),
   body('licenseNumber').trim().isLength({ min: 1 }),
   body('vehicleType').isIn(['sedan', 'suv', 'truck', 'van']),
   body('vehicleMake').trim().isLength({ min: 1 }),
@@ -32,6 +67,11 @@ router.post('/complete-profile', [
       licensePlate,
       emergencyEquipment
     } = req.body;
+
+    // Ensure user has driver role
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ message: 'Only drivers can complete driver profile' });
+    }
 
     // Check if driver profile already exists
     const existingDriver = await Driver.findOne({ where: { userId: req.user.id } });
