@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Axios setup
   useEffect(() => {
-    delete axios.defaults.baseURL
+    axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001"
     axios.defaults.timeout = 10000
 
     if (token) {
@@ -67,12 +67,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       delete axios.defaults.headers.common['Authorization']
     }
 
-    console.log('Axios configured for PROXY:', {
-      baseURL: 'PROXY (relative URLs)',
+    console.log('Axios configured for:', {
+      baseURL: axios.defaults.baseURL,
       hasToken: !!token,
       tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token'
     })
   }, [token])
+
 
   // Check authentication on mount
   useEffect(() => {
