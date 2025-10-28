@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Axios setup
   useEffect(() => {
-    axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001"
+    axios.defaults.baseURL = import.meta.env.VITE_API_URL || "https://localhost:3001"
     axios.defaults.timeout = 10000
 
     if (token) {

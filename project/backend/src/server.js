@@ -34,7 +34,7 @@ const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
       ? [process.env.FRONTEND_URL]
-      : ["http://98.84.159.27", "http://98.84.159.27"],
+      : ["https://98.84.159.27", "https://98.84.159.27"],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
@@ -89,7 +89,7 @@ app.use(helmet({
 app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
-      'http://98.84.159.27',
+      'https://98.84.159.27',
       process.env.FRONTEND_URL
     ];
     if (!origin || allowedOrigins.includes(origin) || /\.devtunnels\.ms$/.test(origin)) {
