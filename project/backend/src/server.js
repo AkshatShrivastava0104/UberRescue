@@ -34,7 +34,7 @@ const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
       ? [process.env.FRONTEND_URL]
-      : ["http://localhost:5173", /\.devtunnels\.ms$/, "http://192.168.56.1:5173"],
+      : ["http://98.84.159.27", "http://98.84.159.27"],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
@@ -74,7 +74,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       connectSrc: [
         "'self'",
-        process.env.FRONTEND_URL || "http://localhost:5173",
+        process.env.FRONTEND_URL || "http://98.84.159.27",
         "wss://*.devtunnels.ms",
         "https://*.devtunnels.ms"
       ],
@@ -89,8 +89,7 @@ app.use(helmet({
 app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
+      'http://98.84.159.27',
       process.env.FRONTEND_URL
     ];
     if (!origin || allowedOrigins.includes(origin) || /\.devtunnels\.ms$/.test(origin)) {
