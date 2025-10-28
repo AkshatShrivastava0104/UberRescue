@@ -33,7 +33,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     if (user && token) {
       console.log('Initializing Socket.IO connection...');
       // Connect to socket server - fix for import.meta.env TypeScript error
-      const socketUrl = import.meta.env?.VITE_SOCKET_URL || 'http://localhost:3001';
+      const socketUrl = import.meta.env?.VITE_SOCKET_URL;
       console.log('Connecting to Socket.IO server:', socketUrl);
 
       const newSocket = io(socketUrl, {

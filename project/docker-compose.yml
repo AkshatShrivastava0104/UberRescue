@@ -30,6 +30,13 @@ services:
       - ./backend/.env_example
     ports:
       - "3001:3001"
+    volumes:
+      - ./backend:/usr/src/app
+      - ./backend/certs: /certs   # ✅ Mount certs folder
+    environment:
+      - SSL_KEY_PATH=/certs/key.pem         # ✅ Ensure correct paths
+      - SSL_CERT_PATH=/certs/cert.pem
+      - NODE_ENV=production
 
   # ------------------------
   # Frontend Service
