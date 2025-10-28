@@ -18,7 +18,7 @@ services:
       - "5432:5432"
 
   # ------------------------
-  # Backend Service
+  # Backend Service (Express + HTTPS)
   # ------------------------
   backend:
     build: ./backend
@@ -31,22 +31,25 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./backend:/usr/src/app
-      - ./backend/certs: /certs   # ✅ Mount certs folder
-    environment:
-      - SSL_KEY_PATH=/certs/key.pem         # ✅ Ensure correct paths
-      - SSL_CERT_PATH=/certs/cert.pem
-      - NODE_ENV=production
+      - ./backend:/app
+    command: ["npm", "run", "start"]  # or "node server.js"
 
   # ------------------------
-  # Frontend Service
+  # Frontend Service (Vite Dev/Build)
   # ------------------------
   frontend:
     build: ./frontend
     container_name: frontend_app
     restart: always
     ports:
-      - "80:80"
+      - "5173:5173"  # Vite default port
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+    environment:
+      - VITE_API_URL=https://98.84.159.27:3001
+      - VITE_SOCKET_URL=https://98.84.159.27:3001
 
 # ------------------------
 # Persistent Volume for PostgreSQL
