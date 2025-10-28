@@ -26,23 +26,30 @@ services:
     restart: always
     depends_on:
       - postgres
-    env_file:
-      - ./backend/.env_example
     ports:
       - "3001:3001"
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: uberrescue
+      DB_PORT: 5432
+      DB_SSL: "false"
+      SSL_KEY_PATH: /certs/key.pem
+      SSL_CERT_PATH: /certs/cert.pem
     volumes:
       - ./backend:/usr/src/app
-      - ./backend/certs:/certs   # ✅ Corrected (no extra space)
-    environment:
-      - SSL_KEY_PATH=/certs/key.pem     # ✅ Correct internal path
-      - SSL_CERT_PATH=/certs/cert.pem
-      - NODE_ENV=production
+      - ./backend/certs:/certs
 
   # ------------------------
   # Frontend Service
   # ------------------------
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=http://98.84.159.27:3001/api   # ✅ backend public endpoint
     container_name: frontend_app
     restart: always
     ports:
