@@ -38,16 +38,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
       const newSocket = io(socketUrl, {
         auth: { token },
-        transports: ['polling', 'websocket'], // Try polling first, then websocket
-        upgrade: true,
-        timeout: 20000,
-        forceNew: true,
+        transports: ["websocket"],   // ✅ Force WebSocket only (wss://)
+        secure: true,                // ✅ Required for HTTPS
+        rejectUnauthorized: false,   // ✅ For self-signed certs
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        // maxReconnectionAttempts: 5,
-        autoConnect: true
+        autoConnect: true,
       })
 
       setSocket(newSocket)
