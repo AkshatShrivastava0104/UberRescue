@@ -86,23 +86,25 @@ app.use(helmet({
 }));
 
 // CORS middleware
-app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'https://98.84.159.27:3001',
-      process.env.FRONTEND_URL
-    ];
-    if (!origin || allowedOrigins.includes(origin) || /\.devtunnels\.ms$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
-}));
+// app.use(cors({
+//   origin: (origin, callback) => {
+//     const allowedOrigins = [
+//       'https://98.84.159.27:3001',
+//       process.env.FRONTEND_URL
+//     ];
+//     if (!origin || allowedOrigins.includes(origin) || /\.devtunnels\.ms$/.test(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+//   optionsSuccessStatus: 200
+// }));
+
+app.use(cors());
 
 // Body parsing
 app.use(express.json({ limit: '10mb', verify: (req, res, buf) => { req.rawBody = buf; } }));

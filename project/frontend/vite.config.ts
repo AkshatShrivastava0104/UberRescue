@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import fs from 'fs'
+import path, { dirname } from 'path'
+import { fileURLToPath } from 'url'
 
-// https://vitejs.dev/config/
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -14,23 +18,26 @@ export default defineConfig({
     'import.meta.env': 'import.meta.env'
   },
   server: {
+    https: {
+      key: fs.readFileSync(path.resolve(__dirname, '.cert/key.pem')),
+      cert: fs.readFileSync(path.resolve(__dirname, '.cert/cert.pem'))
+    },
     host: true,
     port: 5173,
     proxy: {
       '/api': {
         target: 'https://localhost:3001',
         changeOrigin: true,
-        secure: false,  // If you're using self-signed certificates in development
+        secure: false,
       },
       '/socket.io': {
         target: 'https://localhost:3001',
-        ws: true,             // Enable WebSocket proxying
+        ws: true,
         changeOrigin: true,
-        secure: false,       // If you're using self-signed certificates in development
+        secure: false,
       },
     },
   },
-
   build: {
     outDir: 'dist',
     sourcemap: false,
