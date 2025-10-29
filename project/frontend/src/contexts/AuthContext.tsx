@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import { env } from 'process'
 
 interface User {
   id: string
@@ -110,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       console.log('Attempting login for:', email)
-      const response = await axios.post('/api/auth/login', { email, password })
+      const response = await axios.post(`${env.BACKEND_URL}/api/auth/login`, { email, password })
       const { token: newToken, user: userData } = response.data
 
       setToken(newToken)
