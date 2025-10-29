@@ -54,13 +54,15 @@ const DriverRegistration: React.FC = () => {
     }))
   }
 
+  const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrors([])
     setIsLoading(true)
 
     try {
-      await axios.post('https://98.84.159.27:3001/api/drivers/complete-profile', formData)
+      await axios.post(`${api}/drivers/complete-profile`, formData)
 
       // Update user context to reflect driver profile completion
       updateUser({ driverProfile: formData })

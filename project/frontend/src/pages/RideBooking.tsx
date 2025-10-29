@@ -72,9 +72,10 @@ const RideBooking: React.FC = () => {
     }
   }, [pickup, destination])
 
+  const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
   const fetchHazardZones = async () => {
     try {
-      const response = await axios.get('https://98.84.159.27:3001/api/hazards')
+      const response = await axios.get(`${api}/hazards`)
       setHazardZones(response.data.hazardZones)
     } catch (error) {
       console.error('Failed to fetch hazard zones:', error)
@@ -227,7 +228,7 @@ const RideBooking: React.FC = () => {
         emergencyNotes: rideType === 'sos' ? emergencyNotes : undefined
       }
 
-      const response = await axios.post('https://98.84.159.27:3001/api/rides', rideData)
+      const response = await axios.post(`${api}/rides`, rideData)
       const ride = response.data.ride
 
       toast.success(rideType === 'sos' ? 'Emergency ride requested!' : 'Ride booked successfully!')
