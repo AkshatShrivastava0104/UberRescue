@@ -30,21 +30,27 @@ const sslOptions = {
 const server = https.createServer(sslOptions, app);
 
 // Configure Socket.IO
+const allowedOrigins = [
+  "https://98.84.159.27", // Live frontend domain (HTTPS)
+  "http://98.84.159.27",  // In case frontend is accessed via HTTP accidentally
+  "http://localhost:5173" // Development - local vite
+];
+
 const io = socketIo(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production'
-      ? [process.env.FRONTEND_URL]
-      : ["https://98.84.159.27", "https://98.84.159.27"],
+    // origin: allowedOrigins,
+    origin: "*",
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
+    credentials: true,
   },
-  transports: ['websocket', 'polling'],
-  pingTimeout: process.env.NODE_ENV === 'production' ? 30000 : 60000,
+  transports: ["websocket"], // ✅ force websocket in production
+  pingTimeout: 30000,
   pingInterval: 25000,
   maxHttpBufferSize: 1e6,
-  connectTimeout: 20000
+  connectTimeout: 20000,
 });
+
 
 // Trust proxy for production
 app.set('trust proxy', 1);
