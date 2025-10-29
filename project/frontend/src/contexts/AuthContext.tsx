@@ -79,30 +79,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
-      if (token) {
-        try {
-          console.log('Checking authentication...')
-          const response = await axios.get('https://98.84.159.27:3001/api/auth/me')
-          console.log('Auth check successful:', response.data)
-          setUser(response.data.user)
-        } catch (error: any) {
-          console.error('Auth check failed:', error.response?.data || error.message)
-          if (error.code === 'ERR_NETWORK') {
-            toast.error('Cannot connect to server. Please check if backend is running.')
-          } else {
-            // 🔥 FIXED — remove all role tokens if invalid
-            localStorage.removeItem('driver_token')
-            localStorage.removeItem('rider_token')
-            setToken(null)
-          }
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+
+      try {
+        console.log('Checking authentication...')
+        const response = await axios.get('/api/auth/me')
+        console.log('Auth check successful:', response.data)
+        setUser(response.data.user)
+      } catch (error: any) {
+        console.error('Auth check failed:', error.response?.data || error.message)
+        if (error.code === 'ERR_NETWORK') {
+          toast.error('Cannot connect to server. Please check if backend is running.')
+        } else {
+          localStorage.removeItem('driver_token')
+          localStorage.removeItem('rider_token')
+          setToken(null)
           toast.error('Session expired. Please login again.')
         }
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
-    checkAuth()
+    if (token && token !== 'undefined') {
+      checkAuth()
+    } else {
+      setLoading(false)
+    }
   }, [token])
+
+
 
   // ==============================
   // 🔥 FIXED: LOGIN FUNCTION
@@ -111,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       console.log('Attempting login for:', email)
-      const response = await axios.post(`https://98.84.159.27:3001/api/auth/login`, { email, password })
+      const response = await axios.post(`/api/auth/login`, { email, password })
       const { token: newToken, user: userData } = response.data
 
       setToken(newToken)
@@ -145,7 +156,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       console.log('Attempting registration for:', userData.email)
-      const response = await axios.post(`https://98.84.159.27:3001/api/auth/register`, userData)
+      const response = await axios.post(`/api/auth/register`, userData)
       const { token: newToken, user: newUser } = response.data
 
       setToken(newToken)
