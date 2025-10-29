@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setupAxiosInterceptor()
 
     const baseURL =
-      process.env.VITE_API_URL || process.env.VITE_API_BACKEND_URL || "https://98.84.159.27:3001" // Fallback with correct port
+      process.env.VITE_API_URL || process.env.VITE_API_BACKEND_URL || "http://98.84.159.27:3001" // Fallback with correct port
 
     console.log("[v0] Axios Base URL being set to:", baseURL)
 

@@ -42,10 +42,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         secure: true,                // ✅ Required for HTTPS
         rejectUnauthorized: false,   // ✅ For self-signed certs
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
+        reconnectionAttempts: 2,
+        reconnectionDelay: 5000,
         reconnectionDelayMax: 5000,
         autoConnect: true,
+        path: "/socket.io/",
       })
 
       setSocket(newSocket)
