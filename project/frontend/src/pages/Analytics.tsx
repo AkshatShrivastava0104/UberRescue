@@ -93,10 +93,11 @@ const Analytics: React.FC = () => {
     },
   })
 
+  const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
   const fetchAnalytics = async () => {
     try {
       setLoading(true)
-      const endpoint = user?.role === 'driver' ? 'https://98.84.159.27:3001/api/analytics/driver' : 'https://98.84.159.27:3001/api/analytics/rider'
+      const endpoint = user?.role === 'driver' ? `${api}/analytics/driver` : `${api}/analytics/rider`
       const response = await axios.get(`${endpoint}?timeframe=${timeframe}`)
 
       const normalized = normalizeAnalytics(response.data.analytics)

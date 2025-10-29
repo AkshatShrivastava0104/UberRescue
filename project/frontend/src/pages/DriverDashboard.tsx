@@ -90,30 +90,33 @@ const DriverDashboard: React.FC = () => {
     }
   }, [driverProfile?.isOnline])
 
+  const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
+
   const fetchDashboardData = async () => {
     try {
       const [profileRes, hazardsRes, ridesRes, analyticsRes] = await Promise.all([
-        axios.get('https://98.84.159.27:3001/api/drivers/profile'),
-        axios.get('https://98.84.159.27:3001/api/hazards'),
-        axios.get('https://98.84.159.27:3001/api/rides/driver-rides'),
-        axios.get('https://98.84.159.27:3001/api/analytics/driver')
-      ])
+        axios.get(`${api}/drivers/profile`),
+        axios.get(`${api}/hazards`),
+        axios.get(`${api}/rides/driver-rides`),
+        axios.get(`${api}/analytics/driver`)
+      ]);
 
-      setDriverProfile(profileRes.data.driver)
-      setHazardZones(hazardsRes.data.hazardZones)
-      setRecentRides(ridesRes.data.rides.slice(0, 5))
+      setDriverProfile(profileRes.data.driver);
+      setHazardZones(hazardsRes.data.hazardZones);
+      setRecentRides(ridesRes.data.rides.slice(0, 5));
       setStats({
         totalTrips: analyticsRes.data.analytics.totalTrips,
         emergencyTrips: analyticsRes.data.analytics.emergencyTrips,
         safetyScore: analyticsRes.data.analytics.safetyScore?.overallScore || 0,
         earnings: analyticsRes.data.analytics.totalEarnings
-      })
+      });
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error)
+      console.error("Failed to fetch dashboard data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
 
   const startLocationTracking = () => {
     if (navigator.geolocation) {

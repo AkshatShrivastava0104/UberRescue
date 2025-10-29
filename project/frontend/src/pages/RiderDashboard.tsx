@@ -59,27 +59,30 @@ const RiderDashboard: React.FC = () => {
     fetchDashboardData()
   }, [])
 
+  const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
+
   const fetchDashboardData = async () => {
     try {
       const [hazardsRes, ridesRes, analyticsRes] = await Promise.all([
-        axios.get('https://98.84.159.27:3001/api/hazards'),
-        axios.get('https://98.84.159.27:3001/api/rides/my-rides'),
-        axios.get('https://98.84.159.27:3001/api/analytics/rider')
-      ])
+        axios.get(`${api}/hazards`),
+        axios.get(`${api}/rides/my-rides`),
+        axios.get(`${api}/analytics/rider`)
+      ]);
 
-      setHazardZones(hazardsRes.data.hazardZones)
-      setRecentRides(ridesRes.data.rides.slice(0, 5))
+      setHazardZones(hazardsRes.data.hazardZones);
+      setRecentRides(ridesRes.data.rides.slice(0, 5));
       setStats({
         totalRides: analyticsRes.data.analytics.totalRides,
         emergencyRides: analyticsRes.data.analytics.emergencyRides,
         safetyScore: analyticsRes.data.analytics.averageSafetyScore
-      })
+      });
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error)
+      console.error('Failed to fetch dashboard data:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {

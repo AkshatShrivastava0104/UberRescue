@@ -64,9 +64,11 @@ const Profile: React.FC = () => {
     }
   }, [])
 
+  const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
+
   const fetchDriverProfile = async () => {
     try {
-      const response = await axios.get('https://98.84.159.27:3001/api/drivers/profile')
+      const response = await axios.get(`${api}/drivers/profile`)
       if (response.data.driver) {
         setProfile(prev => prev ? {
           ...prev,
@@ -78,10 +80,11 @@ const Profile: React.FC = () => {
     }
   }
 
+  // const api = import.meta.env.VITE_API_BACKEND_URL || '/api';
   const fetchProfile = async () => {
     try {
       setLoading(true)
-      const response = await axios.get('https://98.84.159.27:3001/api/auth/me')
+      const response = await axios.get(`${api}/auth/me`)
       const userData = response.data.user
       setProfile(userData)
       setFormData({
