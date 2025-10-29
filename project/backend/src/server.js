@@ -39,7 +39,7 @@ const allowedOrigins = [
 const io = socketIo(server, {
   cors: {
     // origin: allowedOrigins,
-    origin: "*",
+    origin: "http://98.84.159.27",
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
