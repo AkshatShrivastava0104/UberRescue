@@ -93,10 +93,10 @@ const DriverDashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       const [profileRes, hazardsRes, ridesRes, analyticsRes] = await Promise.all([
-        axios.get('/api/drivers/profile'),
-        axios.get('/api/hazards'),
-        axios.get('/api/rides/driver-rides'),
-        axios.get('/api/analytics/driver')
+        axios.get('https://98.84.159.27:3001/api/drivers/profile'),
+        axios.get('https://98.84.159.27:3001/api/hazards'),
+        axios.get('https://98.84.159.27:3001/api/rides/driver-rides'),
+        axios.get('https://98.84.159.27:3001/api/analytics/driver')
       ])
 
       setDriverProfile(profileRes.data.driver)

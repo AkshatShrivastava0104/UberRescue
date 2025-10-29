@@ -60,11 +60,11 @@ const DriverRegistration: React.FC = () => {
     setIsLoading(true)
 
     try {
-      await axios.post('/api/drivers/complete-profile', formData)
-      
+      await axios.post('https://98.84.159.27:3001/api/drivers/complete-profile', formData)
+
       // Update user context to reflect driver profile completion
       updateUser({ driverProfile: formData })
-      
+
       navigate('/app/driver-dashboard')
     } catch (error: any) {
       if (error.response?.data?.errors) {
@@ -117,7 +117,7 @@ const DriverRegistration: React.FC = () => {
               <FileText className="h-5 w-5" />
               <span>License Information</span>
             </h3>
-            
+
             <div>
               <label htmlFor="licenseNumber" className="label">
                 Driver's License Number

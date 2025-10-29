@@ -115,7 +115,7 @@ const RideTracking: React.FC = () => {
   const fetchRideData = async () => {
     try {
       setLoading(true)
-      const response = await axios.get(`/api/rides/${rideId}`)
+      const response = await axios.get(`https://98.84.159.27:3001/api/rides/${rideId}`)
       setRide(response.data.ride)
 
       // Set initial driver location if available

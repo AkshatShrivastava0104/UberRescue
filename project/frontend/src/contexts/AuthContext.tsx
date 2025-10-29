@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import { env } from 'process'
+
 
 interface User {
   id: string
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token) {
         try {
           console.log('Checking authentication...')
-          const response = await axios.get('/api/auth/me')
+          const response = await axios.get('https://98.84.159.27:3001/api/auth/me')
           console.log('Auth check successful:', response.data)
           setUser(response.data.user)
         } catch (error: any) {
@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       console.log('Attempting login for:', email)
-      const response = await axios.post(`${env.BACKEND_URL}/api/auth/login`, { email, password })
+      const response = await axios.post(`https://98.84.159.27:3001/api/auth/login`, { email, password })
       const { token: newToken, user: userData } = response.data
 
       setToken(newToken)
@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true)
       console.log('Attempting registration for:', userData.email)
-      const response = await axios.post('/api/auth/register', userData)
+      const response = await axios.post(`https://98.84.159.27:3001/api/auth/register`, userData)
       const { token: newToken, user: newUser } = response.data
 
       setToken(newToken)

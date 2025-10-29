@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
-import { 
-  AlertTriangle, 
-  MapPin, 
-  Car, 
-  Clock, 
-  Shield, 
+import {
+  AlertTriangle,
+  MapPin,
+  Car,
+  Clock,
+  Shield,
   TrendingUp,
   Phone,
   Navigation
@@ -62,9 +62,9 @@ const RiderDashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       const [hazardsRes, ridesRes, analyticsRes] = await Promise.all([
-        axios.get('/api/hazards'),
-        axios.get('/api/rides/my-rides'),
-        axios.get('/api/analytics/rider')
+        axios.get('https://98.84.159.27:3001/api/hazards'),
+        axios.get('https://98.84.159.27:3001/api/rides/my-rides'),
+        axios.get('https://98.84.159.27:3001/api/analytics/rider')
       ])
 
       setHazardZones(hazardsRes.data.hazardZones)
@@ -257,9 +257,8 @@ const RiderDashboard: React.FC = () => {
           {recentRides.map((ride) => (
             <div key={ride.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  ride.rideType === 'sos' ? 'bg-red-100' : 'bg-blue-100'
-                }`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${ride.rideType === 'sos' ? 'bg-red-100' : 'bg-blue-100'
+                  }`}>
                   {ride.rideType === 'sos' ? (
                     <AlertTriangle className="h-5 w-5 text-red-600" />
                   ) : (

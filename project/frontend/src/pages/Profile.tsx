@@ -66,7 +66,7 @@ const Profile: React.FC = () => {
 
   const fetchDriverProfile = async () => {
     try {
-      const response = await axios.get('/api/drivers/profile')
+      const response = await axios.get('https://98.84.159.27:3001/api/drivers/profile')
       if (response.data.driver) {
         setProfile(prev => prev ? {
           ...prev,
@@ -81,7 +81,7 @@ const Profile: React.FC = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true)
-      const response = await axios.get('/api/auth/me')
+      const response = await axios.get('https://98.84.159.27:3001/api/auth/me')
       const userData = response.data.user
       setProfile(userData)
       setFormData({
@@ -209,8 +209,8 @@ const Profile: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Status</span>
                   <span className={`badge ${profile.driverProfile.isOnline
-                      ? 'badge-success'
-                      : 'bg-gray-100 text-gray-800'
+                    ? 'badge-success'
+                    : 'bg-gray-100 text-gray-800'
                     }`}>
                     {profile.driverProfile.isOnline ? 'Online' : 'Offline'}
                   </span>
