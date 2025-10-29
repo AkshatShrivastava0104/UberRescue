@@ -1,214 +1,180 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import axios from 'axios'
-import toast from 'react-hot-toast'
-
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  phone: string
-  role: 'rider' | 'driver'
-  driverProfile?: any
-  driverToken: string | null
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: 'rider' | 'driver';
+  driverProfile?: any;
 }
 
 interface AuthContextType {
-  user: User | null
-  token: string | null
-  login: (email: string, password: string) => Promise<void>
-  register: (userData: RegisterData) => Promise<void>
-  logout: () => void
-  loading: boolean
-  updateUser: (userData: Partial<User>) => void
+  user: User | null;
+  token: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
+  logout: () => void;
+  loading: boolean;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 interface RegisterData {
-  email: string
-  password: string
-  firstName: string
-  lastName: string
-  phone: string
-  role: 'rider' | 'driver'
-  emergencyContact?: string
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: 'rider' | 'driver';
+  emergencyContact?: string;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
-}
+  return context;
+};
 
 interface AuthProviderProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // 🔥 FIXED — Load both role tokens
-  const driverToken = localStorage.getItem('driver_token')
-  const riderToken = localStorage.getItem('rider_token')
+  const driverToken = localStorage.getItem('driver_token');
+  const riderToken = localStorage.getItem('rider_token');
 
-  const [token, setToken] = useState<string | null>(driverToken || riderToken)
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [token, setToken] = useState<string | null>(driverToken || riderToken);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Axios setup
+  // ✅ Force axios to use HTTPS if available
   useEffect(() => {
-    axios.defaults.baseURL = import.meta.env.VITE_API_URL;
-    axios.defaults.timeout = 10000
+    const baseURL = import.meta.env.VITE_API_URL || window.location.origin;
+
+    const finalURL = baseURL.startsWith('https')
+      ? baseURL
+      : `https://${baseURL.replace(/^http:\/\//, '')}`;
+
+    axios.defaults.baseURL = finalURL;
+    axios.defaults.timeout = 12000;
 
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
-      delete axios.defaults.headers.common['Authorization']
+      delete axios.defaults.headers.common['Authorization'];
     }
 
-    console.log('Axios configured for:', {
-      baseURL: axios.defaults.baseURL,
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token'
-    })
-  }, [token])
+    console.log('✅ Axios Base URL:', axios.defaults.baseURL);
+  }, [token]);
 
+  // ✅ Load saved session on refresh
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
 
-  // Check authentication on mount
+    if (savedToken && savedUser && !token && !user) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  // ✅ Validate session
   useEffect(() => {
     const checkAuth = async () => {
-      if (!token) {
-        setLoading(false)
-        return
+      if (!token || token === 'undefined') {
+        setLoading(false);
+        return;
       }
-
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
       try {
-        console.log('Checking authentication...')
-        const response = await axios.get('/api/auth/me')
-        console.log('Auth check successful:', response.data)
-        setUser(response.data.user)
+        const response = await axios.get('/api/auth/me');
+        setUser(response.data.user);
       } catch (error: any) {
-        console.error('Auth check failed:', error.response?.data || error.message)
-        if (error.code === 'ERR_NETWORK') {
-          toast.error('Cannot connect to server. Please check if backend is running.')
-        } else {
-          localStorage.removeItem('driver_token')
-          localStorage.removeItem('rider_token')
-          setToken(null)
-          toast.error('Session expired. Please login again.')
+        console.error('Auth failed:', error.response?.data || error.message);
+
+        // ✅ Do NOT logout on network error — only on proper 401 response
+        if (error.response?.status === 401) {
+          localStorage.removeItem('driver_token');
+          localStorage.removeItem('rider_token');
+          setToken(null);
+          toast.error('Session expired. Login again.');
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    if (token && token !== 'undefined') {
-      checkAuth()
-    } else {
-      setLoading(false)
-    }
-  }, [token])
+    checkAuth();
+  }, [token]);
 
+  // ✅ Save token & user only when set
+  if (token) localStorage.setItem('token', token);
+  if (user) localStorage.setItem('user', JSON.stringify(user));
 
-
-  // ==============================
-  // 🔥 FIXED: LOGIN FUNCTION
-  // ==============================
+  // ✅ LOGIN
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true)
-      console.log('Attempting login for:', email)
-      const response = await axios.post(`/api/auth/login`, { email, password })
-      const { token: newToken, user: userData } = response.data
+      setLoading(true);
+      const { data } = await axios.post('/api/auth/login', { email, password });
 
-      setToken(newToken)
-      setUser(userData)
+      setToken(data.token);
+      setUser(data.user);
 
-      // 🔥 Store token per role
-      const key = userData.role === 'driver' ? 'driver_token' : 'rider_token'
-      localStorage.setItem(key, newToken)
+      const key = data.user.role === 'driver' ? 'driver_token' : 'rider_token';
+      localStorage.setItem(key, data.token);
 
-      console.log(`Login successful for: ${userData.email} (${userData.role})`)
-      toast.success('Login successful!')
+      toast.success('Logged in successfully!');
     } catch (error: any) {
-      console.error('Login error:', error.response?.data || error.message)
-      let message = 'Login failed'
-      if (error.code === 'ERR_NETWORK') {
-        message = 'Cannot connect to server. Please check if backend is running.'
-      } else if (error.response?.data?.message) {
-        message = error.response.data.message
-      }
-      toast.error(message)
-      throw error
+      toast.error(error.response?.data?.message || 'Login failed');
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // ==============================
-  // 🔥 FIXED: REGISTER FUNCTION
-  // ==============================
+  // ✅ REGISTER
   const register = async (userData: RegisterData) => {
     try {
-      setLoading(true)
-      console.log('Attempting registration for:', userData.email)
-      const response = await axios.post(`/api/auth/register`, userData)
-      const { token: newToken, user: newUser } = response.data
+      setLoading(true);
+      const { data } = await axios.post('/api/auth/register', userData);
 
-      setToken(newToken)
-      setUser(newUser)
+      setToken(data.token);
+      setUser(data.user);
 
-      // 🔥 Store token per role
-      const key = newUser.role === 'driver' ? 'driver_token' : 'rider_token'
-      localStorage.setItem(key, newToken)
+      const key = data.user.role === 'driver' ? 'driver_token' : 'rider_token';
+      localStorage.setItem(key, data.token);
 
-      console.log(`Registration successful for: ${newUser.email} (${newUser.role})`)
-      toast.success('Registration successful!')
+      toast.success('Registration successful!');
     } catch (error: any) {
-      console.error('Registration error:', error.response?.data || error.message)
-      let message = 'Registration failed'
-      if (error.code === 'ERR_NETWORK') {
-        message = 'Cannot connect to server. Please check if backend is running.'
-      } else if (error.response?.data?.message) {
-        message = error.response.data.message
-      }
-      toast.error(message)
-      throw error
+      toast.error(error.response?.data?.message || 'Registration failed');
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // ==============================
-  // 🔥 FIXED: LOGOUT FUNCTION
-  // ==============================
+  // ✅ LOGOUT
   const logout = () => {
-    if (user?.role === 'driver') {
-      localStorage.removeItem('driver_token')
-    } else if (user?.role === 'rider') {
-      localStorage.removeItem('rider_token')
-    } else {
-      // fallback in case user is null
-      localStorage.removeItem('driver_token')
-      localStorage.removeItem('rider_token')
-    }
+    localStorage.removeItem('driver_token');
+    localStorage.removeItem('rider_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
 
-    setToken(null)
-    setUser(null)
-    delete axios.defaults.headers.common['Authorization']
+    setToken(null);
+    setUser(null);
+    toast.success('Logged out');
+  };
 
-    console.log('User logged out')
-    toast.success('Logged out successfully')
-  }
-
-  // Update user info
   const updateUser = (userData: Partial<User>) => {
-    setUser(prev => (prev ? { ...prev, ...userData } : prev))
-  }
+    setUser(prev => (prev ? { ...prev, ...userData } : prev));
+  };
 
   const value: AuthContextType = {
     user,
@@ -218,7 +184,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     loading,
     updateUser
-  }
+  };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
