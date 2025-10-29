@@ -89,7 +89,7 @@ app.use(helmet({
 app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
-      'https://98.84.159.27',
+      'https://98.84.159.27:3001',
       process.env.FRONTEND_URL
     ];
     if (!origin || allowedOrigins.includes(origin) || /\.devtunnels\.ms$/.test(origin)) {
