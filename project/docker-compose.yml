@@ -36,8 +36,13 @@ services:
       DB_NAME: uberrescue
       DB_PORT: 5432
       DB_SSL: "false"
+
+      # ✅ JWT Secret Added (the missing variable)
+      JWT_SECRET: "supersecretjwtkey"
+
       SSL_KEY_PATH: /certs/key.pem
       SSL_CERT_PATH: /certs/cert.pem
+
     volumes:
       - ./backend:/usr/src/app
       - ./backend/certs:/certs
@@ -49,7 +54,7 @@ services:
     build:
       context: ./frontend
       args:
-        - REACT_APP_API_URL=http://98.84.159.27:3001/api   # ✅ backend public endpoint
+        - REACT_APP_API_URL=http://98.84.159.27:3001/api
     container_name: frontend_app
     restart: always
     ports:
