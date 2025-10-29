@@ -1,6 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
-const https = require('https');
+const http = require("http");
 const express = require('express');
 const socketIo = require('socket.io');
 const cors = require('cors');
@@ -20,14 +20,14 @@ const analyticsRoutes = require('./routes/analytics');
 const app = express();
 
 // Load SSL certificates
-const sslOptions = {
-  key: fs.readFileSync(process.env.SSL_KEY_PATH || './certs/key.pem'),
-  cert: fs.readFileSync(process.env.SSL_CERT_PATH || './certs/cert.pem'),
-  ca: process.env.SSL_CA_PATH ? fs.readFileSync(process.env.SSL_CA_PATH) : undefined
-};
+// const sslOptions = {
+//   key: fs.readFileSync(process.env.SSL_KEY_PATH || './certs/key.pem'),
+//   cert: fs.readFileSync(process.env.SSL_CERT_PATH || './certs/cert.pem'),
+//   ca: process.env.SSL_CA_PATH ? fs.readFileSync(process.env.SSL_CA_PATH) : undefined
+// };
 
 // Create HTTPS server
-const server = https.createServer(sslOptions, app);
+const server = http.createServer(app);
 
 // Configure Socket.IO
 const allowedOrigins = [
