@@ -53,10 +53,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    source: {
-      type: DataTypes.STRING,
-      allowNull: true // e.g., 'IMD', 'OpenWeather', 'GDACS'
-    },
+    // source: {
+    //   type: DataTypes.STRING,
+    //   allowNull: true // e.g., 'IMD', 'OpenWeather', 'GDACS'
+    // },
     lastUpdated: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
