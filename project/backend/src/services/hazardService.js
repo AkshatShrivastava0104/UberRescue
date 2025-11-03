@@ -1,19 +1,19 @@
 /**
  * Hazard Service – UberRescue
- * -----------------------------------------------
+ * --------------------------------------------------
  * Collects and stores real-time hazard data for India.
- * Combines free sources:
+ * Uses only live sources:
  *   • USGS  – Earthquakes
  *   • OpenWeatherMap – Severe weather
  *   • NASA FIRMS – Active fires
- * Falls back to mock data if any API fails.
+ * --------------------------------------------------
  */
 
 const { HazardZone } = require('../models');
 const axios = require('axios');
 const { Op } = require('sequelize');
 
-// 🌍 Real data APIs
+// 🌍 Real data sources
 const HAZARD_DATA_SOURCES = {
   USGS_EARTHQUAKE: 'https://earthquake.usgs.gov/fdsnws/event/1/query',
   OPENWEATHER_API: 'https://api.openweathermap.org/data/2.5/weather',
@@ -24,63 +24,72 @@ const HAZARD_DATA_SOURCES = {
  * 1️⃣  Fetch real hazard data (India only)
  * ---------------------------------------------------- */
 const fetchRealHazardData = async () => {
+  const hazards = [];
+
   try {
-    const [usgs, weather, fires] = await Promise.all([
-      // 🌋 Earthquakes (global feed, filter by India bbox)
-      axios.get(HAZARD_DATA_SOURCES.USGS_EARTHQUAKE, {
-        params: {
-          format: 'geojson',
-          starttime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          minlatitude: 5,
-          maxlatitude: 37,
-          minlongitude: 68,
-          maxlongitude: 97
-        }
-      }),
+    // 🌋 USGS Earthquakes (global feed filtered to India)
+    const usgs = await axios.get(HAZARD_DATA_SOURCES.USGS_EARTHQUAKE, {
+      params: {
+        format: 'geojson',
+        starttime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        minlatitude: 5,
+        maxlatitude: 37,
+        minlongitude: 68,
+        maxlongitude: 97
+      }
+    });
 
-      // 🌦️ Weather alert (requires OpenWeather API key)
-      axios.get(HAZARD_DATA_SOURCES.OPENWEATHER_API, {
-        params: {
-          lat: 20.5937,
-          lon: 78.9629,
-          appid: process.env.OPENWEATHER_API_KEY
-        }
-      }),
+    (usgs.data.features || []).forEach(e => {
+      hazards.push({
+        name: e.properties.place || 'Unknown location',
+        type: 'earthquake',
+        severity: e.properties.mag || 0,
+        centerLatitude: e.geometry.coordinates[1],
+        centerLongitude: e.geometry.coordinates[0],
+        radius: 100,
+        alertLevel: e.properties.alert || 'medium',
+        description: `Magnitude ${e.properties.mag} earthquake at ${e.properties.place}`,
+        isActive: true
+      });
+    });
+  } catch (err) {
+    console.error('⚠️ USGS API failed:', err.message);
+  }
 
-      // 🔥 NASA FIRMS (India fire data – JSON format)
-      axios.get(HAZARD_DATA_SOURCES.NASA_FIRMS, {
-        params: { country: 'INDIA', format: 'json' }
-      }).catch(() => ({ data: [] }))
-    ]);
+  try {
+    // 🔥 NASA FIRMS (fires in India)
+    const fires = await axios.get(HAZARD_DATA_SOURCES.NASA_FIRMS, {
+      params: { country: 'INDIA', format: 'json' }
+    });
 
-    // --- Parse earthquake data ---
-    const earthquakeHazards = (usgs.data.features || []).map(e => ({
-      name: e.properties.place || 'Unknown location',
-      type: 'earthquake',
-      severity: e.properties.mag || 0,
-      centerLatitude: e.geometry.coordinates[1],
-      centerLongitude: e.geometry.coordinates[0],
-      radius: 100,
-      alertLevel: e.properties.alert || 'medium',
-      description: `Magnitude ${e.properties.mag} earthquake at ${e.properties.place}`,
-      isActive: true
-    }));
+    (fires.data || []).forEach(f => {
+      hazards.push({
+        name: `Wildfire near ${f.latitude},${f.longitude}`,
+        type: 'fire',
+        severity: 8,
+        centerLatitude: parseFloat(f.latitude),
+        centerLongitude: parseFloat(f.longitude),
+        radius: 20,
+        alertLevel: 'high',
+        description: 'Active wildfire detected by NASA FIRMS',
+        isActive: true
+      });
+    });
+  } catch (err) {
+    console.error('⚠️ NASA FIRMS API failed:', err.message);
+  }
 
-    // --- Parse wildfire data ---
-    const fireHazards = (fires.data || []).map(f => ({
-      name: `Wildfire near ${f.latitude},${f.longitude}`,
-      type: 'fire',
-      severity: 8,
-      centerLatitude: parseFloat(f.latitude),
-      centerLongitude: parseFloat(f.longitude),
-      radius: 20,
-      alertLevel: 'high',
-      description: 'Active wildfire detected by NASA FIRMS',
-      isActive: true
-    }));
+  try {
+    // 🌦️ OpenWeatherMap (India-wide severe weather)
+    const weather = await axios.get(HAZARD_DATA_SOURCES.OPENWEATHER_API, {
+      params: {
+        lat: 20.5937,
+        lon: 78.9629,
+        appid: process.env.OPENWEATHER_API_KEY
+      }
+    });
 
-    // --- Parse weather condition ---
-    const weatherHazard = [{
+    hazards.push({
       name: 'Severe Weather Alert',
       type: 'storm',
       severity: 6,
@@ -90,54 +99,16 @@ const fetchRealHazardData = async () => {
       alertLevel: 'medium',
       description: `Weather: ${weather.data.weather?.[0]?.description || 'N/A'}`,
       isActive: true
-    }];
-
-    return [...earthquakeHazards, ...fireHazards, ...weatherHazard];
+    });
   } catch (err) {
-    console.error('❌ fetchRealHazardData error:', err.message);
-    return generateMockHazards(); // fallback if API fails
+    console.error('⚠️ OpenWeather API failed:', err.message);
   }
+
+  return hazards;
 };
 
 /* ------------------------------------------------------
- * 2️⃣  Mock fallback (when real APIs fail)
- * ---------------------------------------------------- */
-const generateMockHazards = () => {
-  const base = [
-    {
-      name: 'Mumbai Monsoon Flooding',
-      type: 'flood',
-      severity: 8,
-      centerLatitude: 19.0760,
-      centerLongitude: 72.8777,
-      radius: 15.0,
-      alertLevel: 'high',
-      description: 'Heavy monsoon rains causing flooding',
-      isActive: true
-    },
-    {
-      name: 'Delhi Air Pollution Emergency',
-      type: 'pollution',
-      severity: 7,
-      centerLatitude: 28.6139,
-      centerLongitude: 77.2090,
-      radius: 25.0,
-      alertLevel: 'high',
-      description: 'Severe AQI above 400, health warning',
-      isActive: true
-    }
-  ];
-
-  return base.map(h => ({
-    ...h,
-    severity: Math.max(1, Math.min(10, h.severity + (Math.random() - 0.5) * 2)),
-    lastUpdated: new Date(),
-    externalId: `INDIA-${h.type.toUpperCase()}-${Date.now()}`
-  }));
-};
-
-/* ------------------------------------------------------
- * 3️⃣  Sync with DB
+ * 2️⃣  Sync hazard data to DB (no mock data)
  * ---------------------------------------------------- */
 const syncHazardData = async () => {
   console.log('🔄 Syncing hazard data...');
@@ -168,7 +139,6 @@ const syncHazardData = async () => {
     }
   }
 
-  // deactivate stale entries
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [deactivated] = await HazardZone.update(
     { isActive: false },
@@ -180,7 +150,7 @@ const syncHazardData = async () => {
 };
 
 /* ------------------------------------------------------
- * 4️⃣  Utility – get hazards near a coordinate
+ * 3️⃣  Utility – get hazards near coordinates
  * ---------------------------------------------------- */
 const getHazardZonesNearLocation = async ({ latitude, longitude, radius }) => {
   const hazards = await HazardZone.findAll({ where: { isActive: true } });
@@ -194,7 +164,7 @@ const getHazardZonesNearLocation = async ({ latitude, longitude, radius }) => {
 };
 
 /* ------------------------------------------------------
- * 5️⃣  Auto-sync every 5 minutes
+ * 4️⃣  Auto-sync every 5 minutes
  * ---------------------------------------------------- */
 const startHazardMonitoring = () => {
   console.log('🚀 Starting hazard monitoring...');
