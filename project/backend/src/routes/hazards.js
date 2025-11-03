@@ -5,7 +5,7 @@ const hazardService = require('../services/hazardService');
 
 const router = express.Router();
 
-// Get active hazard zones
+// ✅ Get all active hazard zones
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const hazardZones = await HazardZone.findAll({
@@ -20,7 +20,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Get hazard zones by location
+// ✅ Get hazards near rider’s location
 router.get('/nearby', authMiddleware, async (req, res) => {
   try {
     const { latitude, longitude, radius = 10 } = req.query;
@@ -42,11 +42,11 @@ router.get('/nearby', authMiddleware, async (req, res) => {
   }
 });
 
-// Update hazard zones from external API
+// ✅ Manually trigger external API sync
 router.post('/sync', authMiddleware, async (req, res) => {
   try {
     const result = await hazardService.syncHazardData();
-    
+
     res.json({
       message: 'Hazard zones synchronized successfully',
       updated: result.updated,
@@ -59,7 +59,7 @@ router.post('/sync', authMiddleware, async (req, res) => {
   }
 });
 
-// Get hazard zone by ID
+// ✅ Get single hazard zone by ID
 router.get('/:hazardId', authMiddleware, async (req, res) => {
   try {
     const { hazardId } = req.params;

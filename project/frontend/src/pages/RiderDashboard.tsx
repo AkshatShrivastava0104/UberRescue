@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
+import { useRiderLocation } from '../hooks/useRiderLocation'
+
 import {
   AlertTriangle,
   MapPin,
@@ -44,6 +46,37 @@ interface RecentRide {
 }
 
 const RiderDashboard: React.FC = () => {
+  const { location, error } = useRiderLocation()
+
+  useEffect(() => {
+    if (!location) return
+
+    const sendLocation = async () => {
+      try {
+        await axios.post(`${api}/riders/update-location`, {
+          latitude: location.latitude,
+          longitude: location.longitude
+        })
+
+        // Optionally refresh hazard data based on this location
+        const hazardRes = await axios.get(`${api}/hazards/nearby`, {
+          params: {
+            lat: location.latitude,
+            lon: location.longitude,
+            radius: 50 // km
+          }
+        })
+
+        setHazardZones(hazardRes.data.hazards)
+      } catch (err) {
+        console.error('Failed to send rider location:', err)
+      }
+    }
+
+    sendLocation()
+    const interval = setInterval(sendLocation, 15000) // every 15 seconds
+    return () => clearInterval(interval)
+  }, [location])
   const { user } = useAuth()
   const { connected } = useSocket()
   const [hazardZones, setHazardZones] = useState<HazardZone[]>([])

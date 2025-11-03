@@ -16,41 +16,43 @@ const rideRoutes = require('./routes/rides');
 const driverRoutes = require('./routes/drivers');
 const hazardRoutes = require('./routes/hazards');
 const analyticsRoutes = require('./routes/analytics');
+const riderRoutes = require('./routes/riderRoutes'); // ✅ Added (for location updates)
+
+// Import hazard monitoring service
+const { startHazardMonitoring } = require('./services/hazardService'); // ✅ Added
 
 const app = express();
 
-// Load SSL certificates
+// Load SSL certificates (optional)
 // const sslOptions = {
 //   key: fs.readFileSync(process.env.SSL_KEY_PATH || './certs/key.pem'),
 //   cert: fs.readFileSync(process.env.SSL_CERT_PATH || './certs/cert.pem'),
 //   ca: process.env.SSL_CA_PATH ? fs.readFileSync(process.env.SSL_CA_PATH) : undefined
 // };
 
-// Create HTTPS server
+// Create HTTP server (can switch to HTTPS later)
 const server = http.createServer(app);
 
 // Configure Socket.IO
 const allowedOrigins = [
-  "https://98.84.159.27", // Live frontend domain (HTTPS)
-  "http://98.84.159.27",  // In case frontend is accessed via HTTP accidentally
-  "http://localhost:5173" // Development - local vite
+  "https://98.84.159.27",
+  "http://98.84.159.27",
+  "http://localhost:5173"
 ];
 
 const io = socketIo(server, {
   cors: {
-    // origin: allowedOrigins,
-    origin: "http://98.84.159.27",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   },
-  transports: ["websocket"], // ✅ force websocket in production
+  transports: ["websocket"],
   pingTimeout: 30000,
   pingInterval: 25000,
   maxHttpBufferSize: 1e6,
   connectTimeout: 20000,
 });
-
 
 // Trust proxy for production
 app.set('trust proxy', 1);
@@ -92,24 +94,6 @@ app.use(helmet({
 }));
 
 // CORS middleware
-// app.use(cors({
-//   origin: (origin, callback) => {
-//     const allowedOrigins = [
-//       'https://98.84.159.27:3001',
-//       process.env.FRONTEND_URL
-//     ];
-//     if (!origin || allowedOrigins.includes(origin) || /\.devtunnels\.ms$/.test(origin)) {
-//       callback(null, true);
-//     } else {
-//       callback(new Error("Not allowed by CORS"));
-//     }
-//   },
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-//   optionsSuccessStatus: 200
-// }));
-
 app.use(cors());
 
 // Body parsing
@@ -146,12 +130,13 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// API routes
+// ✅ API routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/hazards', hazardRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/riders', riderRoutes); // ✅ Added new route
 
 // Socket.IO handler
 socketHandler(io);
@@ -197,6 +182,9 @@ const startServer = async () => {
     const syncOptions = process.env.NODE_ENV === 'production' ? { alter: false } : { alter: true };
     await sequelize.sync(syncOptions);
     console.log('✅ Database models synchronized');
+
+    // ✅ Start real-time hazard monitoring (updates every 5 min)
+    startHazardMonitoring();
 
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on https://localhost:${PORT}`);
