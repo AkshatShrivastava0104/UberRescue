@@ -46,12 +46,16 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     alertLevel: {
-      type: DataTypes.ENUM('low', 'medium', 'high', 'critical'),
-      defaultValue: 'medium'
+      type: DataTypes.ENUM('minor', 'moderate', 'severe', 'extreme'),
+      defaultValue: 'moderate'
     },
     externalId: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    source: {
+      type: DataTypes.STRING,
+      allowNull: true // e.g., 'IMD', 'OpenWeather', 'GDACS'
     },
     lastUpdated: {
       type: DataTypes.DATE,
@@ -67,6 +71,5 @@ module.exports = (sequelize, DataTypes) => {
       { fields: ['centerLatitude', 'centerLongitude'] }
     ]
   });
-
   return HazardZone;
 };

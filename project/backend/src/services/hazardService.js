@@ -16,7 +16,7 @@ const { Op } = require('sequelize');
 // 🌍 Real data sources
 const HAZARD_DATA_SOURCES = {
   USGS_EARTHQUAKE: 'https://earthquake.usgs.gov/fdsnws/event/1/query',
-  OPENWEATHER_API: 'https://api.openweathermap.org/data/2.5/weather',
+  OPENWEATHER_API: 'https://api.openweathermap.org/data/3.0/onecall',
   NASA_FIRMS: 'https://firms.modaps.eosdis.nasa.gov/api/area/csv'
 };
 
@@ -85,7 +85,7 @@ const fetchRealHazardData = async () => {
       params: {
         lat: 20.5937,
         lon: 78.9629,
-        appid: process.env.OPENWEATHER_API_KEY
+        appid: process.env.HAZARD_API_KEY
       }
     });
 
