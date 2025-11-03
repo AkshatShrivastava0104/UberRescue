@@ -16,7 +16,7 @@ const rideRoutes = require('./routes/rides');
 const driverRoutes = require('./routes/drivers');
 const hazardRoutes = require('./routes/hazards');
 const analyticsRoutes = require('./routes/analytics');
-const riderRoutes = require('./routes/riderRoutes'); // ✅ Added (for location updates)
+const riderRoutes = require('./routes/rides'); // ✅ Added (for location updates)
 
 // Import hazard monitoring service
 const { startHazardMonitoring } = require('./services/hazardService'); // ✅ Added
