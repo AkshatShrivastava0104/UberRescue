@@ -10,27 +10,24 @@ const { sequelize } = require('./models');
 const socketHandler = require('./sockets/socketHandler');
 const { startHazardMonitoring } = require('./services/hazardService');
 
-// Import routes
+// ✅ Import routes
 const authRoutes = require('./routes/auth');
 const rideRoutes = require('./routes/rides');
 const driverRoutes = require('./routes/drivers');
 const hazardRoutes = require('./routes/hazards');
 const analyticsRoutes = require('./routes/analytics');
-const riderRoutes = require('./routes/rides'); // ✅ Corrected import
 
 const app = express();
 
-// Optional HTTPS setup (keep commented if not using HTTPS yet)
+// Optional HTTPS setup (if needed later)
 // const sslOptions = {
 //   key: fs.readFileSync(process.env.SSL_KEY_PATH || './certs/key.pem'),
 //   cert: fs.readFileSync(process.env.SSL_CERT_PATH || './certs/cert.pem'),
-//   ca: process.env.SSL_CA_PATH ? fs.readFileSync(process.env.SSL_CA_PATH) : undefined,
 // };
 // const server = https.createServer(sslOptions, app);
-
 const server = http.createServer(app);
 
-// ✅ Unified allowed origins for local + production
+// ✅ CORS allowed origins
 const allowedOrigins = [
   'http://localhost:5173',
   'https://localhost:5173',
@@ -38,25 +35,23 @@ const allowedOrigins = [
   'https://98.84.159.27',
 ];
 
-// ✅ Configure Socket.IO
+// ✅ Socket.IO setup
 const io = socketIo(server, {
   cors: {
     origin: allowedOrigins,
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   },
   transports: ['websocket'],
   pingTimeout: 30000,
   pingInterval: 25000,
-  maxHttpBufferSize: 1e6,
   connectTimeout: 20000,
 });
 
-// Trust proxy for production deployments
+// Trust proxy (needed when behind Nginx)
 app.set('trust proxy', 1);
 
-// ✅ Rate limiters
+// ✅ Rate limiting
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 100 : 1000,
@@ -71,7 +66,7 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-// ✅ Security middleware
+// ✅ Security headers
 app.use(
   helmet({
     crossOriginEmbedderPolicy: false,
@@ -84,8 +79,6 @@ app.use(
           'https://localhost:5173',
           'http://98.84.159.27',
           'https://98.84.159.27',
-          'ws://localhost:5173',
-          'wss://localhost:5173',
           'ws://98.84.159.27',
           'wss://98.84.159.27',
         ],
@@ -97,7 +90,7 @@ app.use(
   })
 );
 
-// ✅ CORS middleware
+// ✅ CORS
 app.use(
   cors({
     origin: allowedOrigins,
@@ -105,7 +98,7 @@ app.use(
   })
 );
 
-// ✅ JSON + URL parsing
+// ✅ Body parsing
 app.use(express.json({ limit: '10mb', verify: (req, res, buf) => (req.rawBody = buf) }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -115,7 +108,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Make socket accessible
 app.set('io', io);
 
 // ✅ Health check
@@ -127,12 +119,10 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       database: 'Connected',
       environment: process.env.NODE_ENV || 'development',
-      version: process.env.npm_package_version || '1.0.0',
     });
   } catch (error) {
     res.status(503).json({
       status: 'ERROR',
-      timestamp: new Date().toISOString(),
       database: 'Disconnected',
       error: error.message,
     });
@@ -145,7 +135,6 @@ app.use('/api/rides', rideRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/hazards', hazardRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/riders', riderRoutes);
 
 // ✅ Socket handler
 socketHandler(io);
@@ -158,7 +147,6 @@ app.use((err, req, res, next) => {
     url: req.url,
     method: req.method,
     ip: req.ip,
-    timestamp: new Date().toISOString(),
   });
 
   if (err.name === 'ValidationError') {
@@ -170,7 +158,6 @@ app.use((err, req, res, next) => {
 
   res.status(err.status || 500).json({
     message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : 'Something went wrong',
   });
 });
 
@@ -191,9 +178,8 @@ const startServer = async () => {
 
     const syncOptions = process.env.NODE_ENV === 'production' ? { alter: false } : { alter: true };
     await sequelize.sync(syncOptions);
-    console.log('✅ Database models synchronized');
+    console.log('✅ Models synchronized');
 
-    // Start background hazard monitoring
     startHazardMonitoring();
 
     server.listen(PORT, '0.0.0.0', () => {
@@ -201,9 +187,9 @@ const startServer = async () => {
     });
 
     io.on('connection', (socket) => {
-      console.log(`✅ Client connected: ${socket.id}`);
+      console.log(`✅ Socket connected: ${socket.id}`);
       socket.on('disconnect', (reason) => {
-        console.log(`❌ Client disconnected: ${socket.id} | Reason: ${reason}`);
+        console.log(`❌ Socket disconnected: ${socket.id} | Reason: ${reason}`);
       });
     });
   } catch (error) {
