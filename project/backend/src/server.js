@@ -27,7 +27,9 @@ const app = express();
 // const server = https.createServer(sslOptions, app);
 const server = http.createServer(app);
 
-// ✅ CORS allowed origins
+
+// ✅ CORS
+app.use(cors());
 
 
 // ✅ Socket.IO setup
@@ -86,8 +88,7 @@ app.use(
   })
 );
 
-// ✅ CORS
-app.use(cors());
+
 
 // ✅ Body parsing
 app.use(express.json({ limit: '10mb', verify: (req, res, buf) => (req.rawBody = buf) }));
