@@ -91,12 +91,7 @@ app.use(
 );
 
 // ✅ CORS
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  })
-);
+app.use(cors());
 
 // ✅ Body parsing
 app.use(express.json({ limit: '10mb', verify: (req, res, buf) => (req.rawBody = buf) }));
