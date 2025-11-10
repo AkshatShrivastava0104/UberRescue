@@ -27,17 +27,17 @@ services:
     depends_on:
       - postgres
     ports:
-      - "3001:3001"
+      - "3001:3001"               # ✅ Exposes backend to host
     environment:
       NODE_ENV: production
-      DB_HOST: postgres
+      PORT: 3001                  # ✅ Explicit port for consistency
+      DB_HOST: postgres           # ✅ Connects to container name (not localhost)
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: uberrescue
       DB_PORT: 5432
       DB_SSL: "false"
 
-      # ✅ JWT Secret Added (the missing variable)
       JWT_SECRET: "supersecretjwtkey"
 
       SSL_KEY_PATH: /certs/key.pem
@@ -46,6 +46,11 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - ./backend/certs:/certs
+    working_dir: /usr/src/app
+    command: >
+      sh -c "node server.js"
+    networks:
+      - app-network
 
   # ------------------------
   # Frontend Service
@@ -54,15 +59,26 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_BACKEND_URL=/api
-        - VITE_SOCKET_URL=/socket.io
+        - VITE_API_BACKEND_URL=http://backend:3001       # ✅ internal Docker network URL
+        - VITE_SOCKET_URL=http://backend:3001            # ✅ connects directly to backend container
     container_name: frontend_app
     restart: always
     ports:
       - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
 
 # ------------------------
 # Persistent Volume for PostgreSQL
 # ------------------------
 volumes:
   pgdata:
+
+# ------------------------
+# Network for internal communication
+# ------------------------
+networks:
+  app-network:
+    driver: bridge
