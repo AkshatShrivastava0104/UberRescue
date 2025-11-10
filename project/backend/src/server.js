@@ -28,18 +28,14 @@ const app = express();
 const server = http.createServer(app);
 
 // ✅ CORS allowed origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://localhost:5173',
-  'http://98.84.159.27',
-  'https://98.84.159.27',
-];
+
 
 // ✅ Socket.IO setup
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*",
     methods: ['GET', 'POST'],
+    allowedHeaders: ['*'],
     credentials: true,
   },
   transports: ['websocket'],
