@@ -16,7 +16,7 @@ const rideRoutes = require('./routes/rides');
 const driverRoutes = require('./routes/drivers');
 const hazardRoutes = require('./routes/hazards');
 const analyticsRoutes = require('./routes/analytics');
-const riderRoutes = require('./routes/riders'); // ✅ Corrected import
+const riderRoutes = require('./routes/rides'); // ✅ Corrected import
 
 const app = express();
 
