@@ -54,7 +54,8 @@ services:
     build:
       context: ./frontend
       args:
-        - REACT_APP_API_URL=http://98.84.159.27:3001/api
+        - VITE_API_BACKEND_URL=/api
+        - VITE_SOCKET_URL=/socket.io
     container_name: frontend_app
     restart: always
     ports:
