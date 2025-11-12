@@ -1,23 +1,24 @@
 /**
- * Hazard Service – UberRescue
+ * Hazard Service – UberRescue (Enhanced)
  * --------------------------------------------------
  * Collects and stores real-time hazard data for India.
- * Uses only live sources:
- *   • USGS  – Earthquakes
- *   • OpenWeatherMap – Severe weather
- *   • NASA FIRMS – Active fires
+ * Uses only free live sources:
+ *   • USGS          – Earthquakes
+ *   • NASA FIRMS    – Active fires
+ *   • Open-Meteo    – Weather hazards (replaces OpenWeather)
  * --------------------------------------------------
  */
 
 const { HazardZone } = require('../models');
 const axios = require('axios');
 const { Op } = require('sequelize');
+const { fetchWeatherApi } = require("openmeteo");
 
 // 🌍 Real data sources
 const HAZARD_DATA_SOURCES = {
   USGS_EARTHQUAKE: 'https://earthquake.usgs.gov/fdsnws/event/1/query',
-  OPENWEATHER_API: 'https://api.openweathermap.org/data/3.0/onecall',
-  NASA_FIRMS: 'https://firms.modaps.eosdis.nasa.gov/api/area/csv'
+  NASA_FIRMS: 'https://firms.modaps.eosdis.nasa.gov/api/area/csv',
+  OPEN_METEO: 'https://api.open-meteo.com/v1/forecast'
 };
 
 /* ------------------------------------------------------
@@ -26,8 +27,8 @@ const HAZARD_DATA_SOURCES = {
 const fetchRealHazardData = async () => {
   const hazards = [];
 
+  /* ---------- 🌋 USGS EARTHQUAKES ---------- */
   try {
-    // 🌋 USGS Earthquakes (global feed filtered to India)
     const usgs = await axios.get(HAZARD_DATA_SOURCES.USGS_EARTHQUAKE, {
       params: {
         format: 'geojson',
@@ -56,59 +57,73 @@ const fetchRealHazardData = async () => {
     console.error('⚠️ USGS API failed:', err.message);
   }
 
+  /* ---------- 🔥 NASA FIRMS ---------- */
   try {
-    // 🔥 NASA FIRMS (fires in India)
     const fires = await axios.get(HAZARD_DATA_SOURCES.NASA_FIRMS, {
       params: { country: 'INDIA', format: 'json' }
     });
 
-    (fires.data || []).forEach(f => {
-      hazards.push({
-        name: `Wildfire near ${f.latitude},${f.longitude}`,
-        type: 'fire',
-        severity: 8,
-        centerLatitude: parseFloat(f.latitude),
-        centerLongitude: parseFloat(f.longitude),
-        radius: 20,
-        alertLevel: 'high',
-        description: 'Active wildfire detected by NASA FIRMS',
-        isActive: true
+    if (Array.isArray(fires.data)) {
+      fires.data.forEach(f => {
+        hazards.push({
+          name: `Wildfire near ${f.latitude},${f.longitude}`,
+          type: 'fire',
+          severity: 8,
+          centerLatitude: parseFloat(f.latitude),
+          centerLongitude: parseFloat(f.longitude),
+          radius: 20,
+          alertLevel: 'high',
+          description: 'Active wildfire detected by NASA FIRMS',
+          isActive: true
+        });
       });
-    });
+    } else {
+      console.warn('⚠️ NASA FIRMS returned unexpected format:', typeof fires.data);
+    }
   } catch (err) {
     console.error('⚠️ NASA FIRMS API failed:', err.message);
   }
 
+  /* ---------- 🌦️ OPEN-METEO WEATHER ---------- */
   try {
-    // 🌦️ OpenWeatherMap (India-wide severe weather)
-    const weather = await axios.get(HAZARD_DATA_SOURCES.OPENWEATHER_API, {
-      params: {
-        lat: 20.5937,
-        lon: 78.9629,
-        appid: process.env.HAZARD_API_KEY
-      }
-    });
+    const params = {
+      latitude: 20.5937,
+      longitude: 78.9629,
+      hourly: "temperature_2m,precipitation,wind_speed_10m",
+      timezone: "auto"
+    };
 
-    hazards.push({
-      name: 'Severe Weather Alert',
-      type: 'storm',
-      severity: 6,
-      centerLatitude: 20.5937,
-      centerLongitude: 78.9629,
-      radius: 200,
-      alertLevel: 'medium',
-      description: `Weather: ${weather.data.weather?.[0]?.description || 'N/A'}`,
-      isActive: true
-    });
+    const responses = await fetchWeatherApi(HAZARD_DATA_SOURCES.OPEN_METEO, params);
+    const response = responses[0];
+    const hourly = response.hourly();
+
+    const temps = hourly.variables(0).valuesArray();
+    const windSpeeds = hourly.variables(2).valuesArray();
+    const maxWind = Math.max(...windSpeeds);
+
+    const severeCondition = maxWind > 40 || Math.max(...temps) > 40; // simple threshold
+    if (severeCondition) {
+      hazards.push({
+        name: 'Severe Weather Alert',
+        type: 'storm',
+        severity: Math.min(Math.round(maxWind / 10), 10),
+        centerLatitude: 20.5937,
+        centerLongitude: 78.9629,
+        radius: 300,
+        alertLevel: maxWind > 60 ? 'severe' : 'moderate',
+        description: `Detected high winds up to ${maxWind} m/s using Open-Meteo API`,
+        isActive: true
+      });
+    }
   } catch (err) {
-    console.error('⚠️ OpenWeather API failed:', err.message);
+    console.error('⚠️ Open-Meteo API failed:', err.message);
   }
 
   return hazards;
 };
 
 /* ------------------------------------------------------
- * 2️⃣  Sync hazard data to DB (no mock data)
+ * 2️⃣  Sync hazard data to DB
  * ---------------------------------------------------- */
 const syncHazardData = async () => {
   console.log('🔄 Syncing hazard data...');
