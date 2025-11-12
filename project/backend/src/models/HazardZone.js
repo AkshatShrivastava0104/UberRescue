@@ -22,9 +22,10 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     coordinates: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.FLOAT)),
+      type: DataTypes.JSONB,
       allowNull: false
     },
+
     centerLatitude: {
       type: DataTypes.DECIMAL(10, 8),
       allowNull: false
