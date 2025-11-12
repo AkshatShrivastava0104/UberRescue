@@ -44,6 +44,9 @@ services:
       SSL_KEY_PATH: /certs/key.pem
       SSL_CERT_PATH: /certs/cert.pem
 
+      HAZARD_API_KEY: "f7ae65cf8072aeb2f408d0b1967e4860"
+      NASA_FIRMS_API_KEY: "your_nasa_firms_api_key_here"
+
     volumes:
       - ./backend:/usr/src/app
       - ./backend/certs:/certs
