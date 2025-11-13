@@ -60,6 +60,7 @@ const fetchRealHazardData = async () => {
   }
 
   /* ---------- 🔥 NASA FIRMS (India MODIS CSV feed) ---------- */
+  /* ---------- 🔥 NASA FIRMS (India MODIS CSV feed) ---------- */
   try {
     const csvData = await axios.get(HAZARD_DATA_SOURCES.NASA_FIRMS_INDIA);
     const parsed = Papa.parse(csvData.data, { header: true });
@@ -82,6 +83,7 @@ const fetchRealHazardData = async () => {
   } catch (err) {
     console.error("⚠️ NASA FIRMS (India) failed:", err.message);
   }
+
 
   /* ---------- 🌦️ OPEN-METEO (Storms, Floods, Heatwaves) ---------- */
   try {
